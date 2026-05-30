@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --color-base: #07090f;
+  --color-panel: #11131c;
+  --color-card: #181a24;
+  --color-gold: #ffd22e;
+  --shadow-glow: 0 18px 60px rgba(255, 210, 46, 0.16);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  --bottom-nav-height: 84px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: #07090f;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: #07090f;
+  color: #f6f7fb;
+}
+
+@media (min-width: 640px) {
+  body {
+    background:
+      radial-gradient(circle at 10% -10%, rgba(255, 210, 46, 0.12), transparent 25%),
+      radial-gradient(circle at 90% 0%, rgba(78, 87, 255, 0.10), transparent 25%),
+      #07090f;
+  }
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.safe-bottom {
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --bottom-nav-height: 52px;
+  }
+
+  .watch-header {
+    gap: 0.5rem;
+    padding-block: 0.375rem;
+  }
+
+  .watch-header-action {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+
+  .watch-header-content,
+  .watch-header-copy {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  .watch-header-eyebrow {
+    display: none;
+  }
+
+  .watch-header-title {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .watch-header-meta {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+  }
+
+  .bottom-nav {
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
+    padding-top: 4px;
+  }
+
+  .bottom-nav-item {
+    padding-block: 5px;
+  }
+
+  .bottom-nav-icon {
+    margin-bottom: 0;
+  }
+
+  .bottom-nav-label {
+    display: none;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.line-clamp-1, .line-clamp-2, .line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.line-clamp-1 { -webkit-line-clamp: 1; }
+.line-clamp-2 { -webkit-line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

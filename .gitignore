@@ -1,0 +1,55 @@
+node_modules/
+.next/
+.astro/
+.vite-cache/
+.vite-cache-build/
+.wrangler-config/
+.wrangler-cache/
+.wrangler/
+out/
+dist/
+build/
+
+.env
+.env.*
+!.env.example
+
+# Legacy VPS/Next files kept locally, not needed for Cloudflare Astro build
+app/
+Dockerfile
+compose.yaml
+.dockerignore
+next-env.d.ts
+next.config.mjs
+proxy.ts
+memory.md
+README.md
+CLOUDFLARE_MIGRATION_PLAN.md
+FEATURE_BASELINE_FILMBLUESIA.md
+eslint.config.mjs
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.DS_Store
+*.log
+
+backups/
+*.bak
+*.bak.*
+*.tmp
+*.swp
+tmp/
+
+# Local editor/workspace state
+.vscode/
+scratch/
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# Local assistant notes
+claude.md
+CLAUDE.md

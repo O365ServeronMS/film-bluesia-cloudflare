@@ -1,0 +1,31 @@
+---
+import BaseLayout from "@/src/layouts/BaseLayout.astro";
+import { HeroSlider } from "@/components/HeroSlider";
+import { SectionRow } from "@/components/SectionRow";
+import { TopBar } from "@/components/TopBar";
+import { getHome } from "@/lib/ophim";
+import { proxiedImageCandidateSrcSet } from "@/lib/utils";
+
+const home = await getHome();
+const firstHeroImage = home.hero[0]?.thumb || home.hero[0]?.poster;
+const heroPreloadSrcSet = firstHeroImage
+  ? proxiedImageCandidateSrcSet(firstHeroImage, [
+      { width: 360, quality: 60 },
+      { width: 720, quality: 70 },
+      { width: 960, quality: 72 }
+    ])
+  : undefined;
+---
+
+<BaseLayout>
+  {heroPreloadSrcSet && (
+    <Fragment slot="head">
+      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 688px, calc(100vw - 32px)" />
+    </Fragment>
+  )}
+  <TopBar client:load />
+  <HeroSlider client:load items={home.hero} />
+  {home.sections.map((section) => (
+    <SectionRow title={section.title} href={section.href} items={section.items} />
+  ))}
+</BaseLayout>

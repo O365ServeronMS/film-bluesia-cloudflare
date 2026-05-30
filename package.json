@@ -1,0 +1,44 @@
+{
+  "name": "film.bluesia.net",
+  "version": "6.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro build && wrangler dev dist/_worker.js/index.js --assets dist",
+    "deploy": "astro build && wrangler deploy dist/_worker.js/index.js --assets dist",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.6.13",
+    "@astrojs/react": "^4.4.2",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^25.8.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "artplayer": "^5.4.0",
+    "astro": "^5.15.9",
+    "autoprefixer": "^10.5.0",
+    "clsx": "^2.1.1",
+    "critters": "^0.0.25",
+    "hls.js": "^1.6.16",
+    "lucide-react": "^1.16.0",
+    "postcss": "^8.5.14",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "wrangler": "latest"
+  },
+  "browserslist": [
+    "Chrome >= 90",
+    "Firefox >= 90",
+    "Safari >= 14",
+    "Edge >= 90",
+    "not IE 11"
+  ]
+}

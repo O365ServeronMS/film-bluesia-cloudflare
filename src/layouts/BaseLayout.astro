@@ -1,0 +1,52 @@
+---
+import { BottomNav } from "@/components/BottomNav";
+import "@/src/styles/globals.css";
+
+type Props = {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: string;
+};
+
+const {
+  title = "Bluesia Cinema",
+  description = "Goc nho cua nguoi dam me phim",
+  image = "/icon-512.png",
+  type = "website"
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname + Astro.url.search, "https://film.bluesia.net").toString();
+---
+
+<!doctype html>
+<html lang="vi" data-scroll-behavior="smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07090f" />
+    <link rel="canonical" href={canonical} />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="Bluesia Cinema" />
+    <meta property="og:type" content={type} />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:image" content={image} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+    <slot name="head" />
+  </head>
+  <body class="font-sans antialiased">
+    <main class="mx-auto min-h-screen w-full max-w-[720px] safe-bottom">
+      <slot />
+    </main>
+    <BottomNav client:load />
+  </body>
+</html>

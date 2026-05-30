@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "film-bluesia-net",
+  "compatibility_date": "2026-05-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "film.bluesia.net",
+      "custom_domain": true
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BLUESIA_CACHE_R2",
+      "bucket_name": "film-bluesia-cache"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://film.bluesia.net",
+    "BLUESIA_CACHE_MAX_BYTES": "524288000",
+    "BLUESIA_CACHE_METADATA_MAX_BYTES": "104857600",
+    "BLUESIA_CACHE_IMAGE_MAX_BYTES": "419430400",
+    "BLUESIA_IMAGE_TRANSFORM_MODE": "cloudflare-free"
+  }
+}
