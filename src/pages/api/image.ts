@@ -2,27 +2,35 @@ import type { APIRoute } from "astro";
 import { imageCacheTtlSeconds, readBinaryCache, writeBinaryCache } from "@/lib/cache";
 
 const FALLBACK_IMAGE_ROOTS = ["https://img.ophim.live", "https://img.ophim.cc"];
-const VARIANTS = [
-  { width: 360, quality: 60 },
-  { width: 720, quality: 70 },
-  { width: 960, quality: 72 }
-] as const;
 const IMAGE_STALE_WHILE_REVALIDATE_SECONDS = 86400;
+const IMAGE_CACHE_PREFIX = "cf-img-v3";
 
-function numberParam(value: string | null, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
+type ImageProfileName =
+  | "poster-mobile"
+  | "poster-desktop"
+  | "backdrop-mobile"
+  | "backdrop-desktop"
+  | "thumb-mobile"
+  | "thumb-desktop";
 
-function approvedVariant(width: number, quality: number) {
-  const requestedWidth = Math.max(1, width);
-  const closest = VARIANTS.reduce((best, candidate) =>
-    Math.abs(candidate.width - requestedWidth) < Math.abs(best.width - requestedWidth) ? candidate : best
-  );
-  return {
-    width: closest.width,
-    quality: Math.min(95, Math.max(40, Number.isFinite(quality) ? Math.round(quality) : closest.quality))
-  };
+type ImageProfile = {
+  name: ImageProfileName;
+  type: "poster" | "backdrop" | "thumb";
+  width: number;
+  quality: number;
+};
+
+const PROFILES: Record<ImageProfileName, ImageProfile> = {
+  "poster-mobile": { name: "poster-mobile", type: "poster", width: 360, quality: 65 },
+  "poster-desktop": { name: "poster-desktop", type: "poster", width: 560, quality: 75 },
+  "backdrop-mobile": { name: "backdrop-mobile", type: "backdrop", width: 780, quality: 60 },
+  "backdrop-desktop": { name: "backdrop-desktop", type: "backdrop", width: 1280, quality: 70 },
+  "thumb-mobile": { name: "thumb-mobile", type: "thumb", width: 320, quality: 65 },
+  "thumb-desktop": { name: "thumb-desktop", type: "thumb", width: 480, quality: 70 }
+};
+
+function cacheLog(message: string, details?: Record<string, unknown>) {
+  console.log(`[cache] ${message}`, details || {});
 }
 
 function safeUrl(value: string) {
@@ -39,8 +47,14 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
-function cacheLog(message: string, details?: Record<string, unknown>) {
-  console.log(`[cache] ${message}`, details || {});
+function normalizedOriginalUrl(imageUrl: string) {
+  const url = safeUrl(imageUrl);
+  if (!url) return "";
+  url.protocol = url.protocol.toLowerCase();
+  url.hostname = url.hostname.toLowerCase();
+  url.hash = "";
+  url.searchParams.sort();
+  return url.toString();
 }
 
 async function sha256(value: string) {
@@ -48,20 +62,28 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function imageType(value: string | null) {
+function numberParam(...values: Array<string | null>) {
+  for (const value of values) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return 0;
+}
+
+function legacyType(value: string | null) {
   const type = String(value || "poster").trim().toLowerCase();
-  return ["poster", "backdrop", "thumb"].includes(type) ? type : "poster";
+  return type === "backdrop" || type === "thumb" || type === "poster" ? type : "poster";
 }
 
-function imageVariant(width: number) {
-  return width <= 360 ? "iphone" : "desktop";
-}
+function imageProfile(url: URL): ImageProfile {
+  const requested = String(url.searchParams.get("profile") || "").trim().toLowerCase();
+  if (requested in PROFILES) return PROFILES[requested as ImageProfileName];
 
-function negotiatedFormat(request: Request) {
-  const accept = request.headers.get("accept") || "";
-  if (accept.includes("image/avif")) return "avif";
-  if (accept.includes("image/webp")) return "webp";
-  return "jpeg";
+  const type = legacyType(url.searchParams.get("type"));
+  const width = numberParam(url.searchParams.get("w"), url.searchParams.get("width"));
+  if (type === "backdrop") return width >= 1000 ? PROFILES["backdrop-desktop"] : PROFILES["backdrop-mobile"];
+  if (type === "thumb") return width >= 400 ? PROFILES["thumb-desktop"] : PROFILES["thumb-mobile"];
+  return width >= 480 ? PROFILES["poster-desktop"] : PROFILES["poster-mobile"];
 }
 
 function imageCandidates(imageUrl: string) {
@@ -86,38 +108,39 @@ function imageCandidates(imageUrl: string) {
   return unique(candidates);
 }
 
-async function cacheKey(imageUrl: string, type: string, width: number, format: string) {
-  return `images/${type}/${await sha256(imageUrl)}/${imageVariant(width)}.${format}`;
+async function cacheKey(profile: ImageProfile, normalizedUrl: string) {
+  return `${IMAGE_CACHE_PREFIX}/${profile.name}/${await sha256(normalizedUrl)}.webp`;
+}
+
+function cacheControlHeader() {
+  const ttl = imageCacheTtlSeconds();
+  return `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
 }
 
 function imageHeaders(options: {
-  contentType: string;
   cacheStatus: "HIT" | "MISS" | "BYPASS" | "FALLBACK";
   sourceUrl?: string;
-  transformed: boolean;
+  profile?: ImageProfileName;
   etag?: string;
 }) {
-  const ttl = imageCacheTtlSeconds();
-  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
+  const cacheControl = cacheControlHeader();
   return {
-    "Content-Type": options.contentType,
+    "Content-Type": "image/webp",
     "Cache-Control": cacheControl,
     "CDN-Cache-Control": cacheControl,
     "Cloudflare-CDN-Cache-Control": cacheControl,
     "X-Film-Bluesia-Net-Cache": options.cacheStatus,
     "X-Film-Bluesia-Net-Cache-Type": "image",
-    "X-Film-Bluesia-Net-Image-Format": "auto",
-    "X-Film-Bluesia-Net-Image-Transformed": options.transformed ? "1" : "0",
-    "X-Film-Bluesia-Net-Image-Variant": "cloudflare-free",
-    "Vary": "Accept",
+    "X-Film-Bluesia-Net-Image-Format": "webp",
+    "X-Film-Bluesia-Net-Image-Profile": options.profile || "",
+    "X-Film-Bluesia-Net-Image-Variant": "cloudflare-profile-v3",
     ...(options.etag ? { "ETag": `"${options.etag}"` } : {}),
     ...(options.sourceUrl ? { "X-Film-Bluesia-Net-Image-Source": options.sourceUrl } : {})
   };
 }
 
 function notModified(etag: string) {
-  const ttl = imageCacheTtlSeconds();
-  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
+  const cacheControl = cacheControlHeader();
   return new Response(null, {
     status: 304,
     headers: {
@@ -129,86 +152,35 @@ function notModified(etag: string) {
   });
 }
 
-async function fetchImage(url: string, variant: { width: number; quality: number }, transform: boolean) {
-  const init: RequestInit & { cf?: { image?: { width: number; quality: number; format: "auto" } } } = {
+function edgeCacheRequest(requestUrl: URL, profile: ImageProfile, normalizedUrl: string) {
+  const edgeUrl = new URL(requestUrl.origin + requestUrl.pathname);
+  edgeUrl.searchParams.set("profile", profile.name);
+  edgeUrl.searchParams.set("url", normalizedUrl);
+  return new Request(edgeUrl.toString(), { method: "GET" });
+}
+
+async function fetchOptimizedImage(url: string, profile: ImageProfile) {
+  const init: RequestInit & { cf?: { image?: { width: number; quality: number; format: "webp" } } } = {
     headers: {
-      "User-Agent": "Mozilla/5.0 (film.bluesia.net; Cloudflare free image proxy)",
-      "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      "User-Agent": "Mozilla/5.0 (film.bluesia.net; Cloudflare image profile proxy)",
+      "Accept": "image/webp,image/*,*/*",
       "Referer": process.env.OPHIM_BASE_URL || "https://ophim1.com/"
     },
-    cache: "no-store"
+    cache: "no-store",
+    cf: {
+      image: {
+        width: profile.width,
+        quality: profile.quality,
+        format: "webp"
+      }
+    }
   };
-
-  if (transform) {
-    init.cf = { image: { width: variant.width, quality: variant.quality, format: "auto" } };
-  }
 
   return fetch(url, init);
 }
 
-export const GET: APIRoute = async ({ request, url }) => {
-  const rawUrl = url.searchParams.get("url") || "";
-  const imageUrl = decodeURIComponent(rawUrl);
-  const type = imageType(url.searchParams.get("type"));
-  const requestedWidth = numberParam(url.searchParams.get("w"), 720);
-  const requestedQuality = numberParam(url.searchParams.get("q"), 70);
-  const variant = approvedVariant(requestedWidth, requestedQuality);
-  const format = negotiatedFormat(request);
-  const candidates = imageCandidates(imageUrl);
-
-  if (!candidates.length) {
-    return Response.json({ error: "Invalid image URL" }, { status: 400 });
-  }
-
-  const key = await cacheKey(imageUrl, type, variant.width, format);
-  const ifNoneMatch = request.headers.get("if-none-match") || "";
-  const cached = await readBinaryCache("images", key, imageCacheTtlSeconds());
-  if (cached) {
-    if (cached.etag && ifNoneMatch.includes(cached.etag)) return notModified(cached.etag);
-    return new Response(cached.body, {
-      headers: imageHeaders({
-        contentType: cached.contentType,
-        cacheStatus: "HIT",
-        sourceUrl: cached.sourceUrl,
-        transformed: true,
-        etag: cached.etag
-      })
-    });
-  }
-
-  let lastStatus = 0;
-
-  for (const candidate of candidates) {
-    for (const transform of [true, false]) {
-      try {
-        cacheLog("IMAGE_ORIGIN_FETCH", { sourceUrl: candidate, width: variant.width, quality: variant.quality, transform });
-        const upstream = await fetchImage(candidate, variant, transform);
-        lastStatus = upstream.status;
-        const contentType = upstream.headers.get("content-type") || "";
-        if (!upstream.ok || !contentType.toLowerCase().startsWith("image/")) continue;
-
-        const body = new Uint8Array(await upstream.arrayBuffer());
-        cacheLog(transform ? "IMAGE_OPTIMIZE_OK" : "IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, contentType, bytes: body.byteLength });
-        const { etag, skipped } = await writeBinaryCache("images", key, body, contentType, candidate);
-        if (ifNoneMatch && ifNoneMatch.includes(etag)) return notModified(etag);
-
-        return new Response(body, {
-          headers: imageHeaders({
-            contentType,
-            cacheStatus: skipped ? "BYPASS" : transform ? "MISS" : "FALLBACK",
-            sourceUrl: candidate,
-            transformed: transform,
-            etag
-          })
-        });
-      } catch {
-        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, transform });
-        continue;
-      }
-    }
-  }
-
-  cacheLog("IMAGE_FALLBACK_PLACEHOLDER", { imageUrl, status: lastStatus || "unknown" });
+function placeholderResponse(imageUrl: string, status: number | string) {
+  cacheLog("IMAGE_FALLBACK_PLACEHOLDER", { imageUrl, status });
   return new Response(
     `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540"><rect width="360" height="540" fill="#18181b"/><text x="180" y="270" fill="#71717a" font-family="Arial,sans-serif" font-size="22" text-anchor="middle">No image</text></svg>`,
     {
@@ -221,4 +193,91 @@ export const GET: APIRoute = async ({ request, url }) => {
       }
     }
   );
+}
+
+async function putEdgeCache(request: Request, response: Response) {
+  try {
+    await caches.default.put(request, response.clone());
+  } catch (error) {
+    cacheLog("IMAGE_OPTIMIZE_FAIL", { reason: "edge-cache-write", error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+export const GET: APIRoute = async ({ request, url }) => {
+  const rawUrl = url.searchParams.get("url") || "";
+  const imageUrl = decodeURIComponent(rawUrl);
+  const normalizedUrl = normalizedOriginalUrl(imageUrl);
+  const profile = imageProfile(url);
+  const candidates = imageCandidates(normalizedUrl);
+
+  if (!normalizedUrl || !candidates.length) {
+    return Response.json({ error: "Invalid image URL" }, { status: 400 });
+  }
+
+  const key = await cacheKey(profile, normalizedUrl);
+  const edgeRequest = edgeCacheRequest(url, profile, normalizedUrl);
+  const ifNoneMatch = request.headers.get("if-none-match") || "";
+
+  const edgeHit = await caches.default.match(edgeRequest);
+  if (edgeHit) {
+    const hit = new Response(edgeHit.body, edgeHit);
+    hit.headers.set("X-Film-Bluesia-Net-Cache", "EDGE_HIT");
+    return hit;
+  }
+
+  const cached = await readBinaryCache("images", key, imageCacheTtlSeconds());
+  if (cached) {
+    if (cached.etag && ifNoneMatch.includes(cached.etag)) return notModified(cached.etag);
+    const response = new Response(cached.body, {
+      headers: imageHeaders({
+        cacheStatus: "HIT",
+        sourceUrl: cached.sourceUrl,
+        profile: profile.name,
+        etag: cached.etag
+      })
+    });
+    await putEdgeCache(edgeRequest, response);
+    return response;
+  }
+
+  let lastStatus: number | string = 0;
+
+  for (const candidate of candidates) {
+    try {
+      cacheLog("IMAGE_ORIGIN_FETCH", { sourceUrl: candidate, profile: profile.name, width: profile.width, quality: profile.quality });
+      const upstream = await fetchOptimizedImage(candidate, profile);
+      lastStatus = upstream.status;
+      const contentType = upstream.headers.get("content-type") || "";
+      if (!upstream.ok || !contentType.toLowerCase().startsWith("image/webp")) {
+        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, status: upstream.status, contentType, profile: profile.name });
+        continue;
+      }
+
+      const body = new Uint8Array(await upstream.arrayBuffer());
+      if (!body.byteLength) {
+        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, reason: "empty-body", profile: profile.name });
+        continue;
+      }
+
+      cacheLog("IMAGE_OPTIMIZE_OK", { sourceUrl: candidate, profile: profile.name, bytes: body.byteLength });
+      const { etag, skipped } = await writeBinaryCache("images", key, body, "image/webp", candidate);
+      if (ifNoneMatch && ifNoneMatch.includes(etag)) return notModified(etag);
+
+      const response = new Response(body, {
+        headers: imageHeaders({
+          cacheStatus: skipped ? "BYPASS" : "MISS",
+          sourceUrl: candidate,
+          profile: profile.name,
+          etag
+        })
+      });
+      await putEdgeCache(edgeRequest, response);
+      return response;
+    } catch (error) {
+      cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, profile: profile.name, error: error instanceof Error ? error.message : String(error) });
+      lastStatus = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return placeholderResponse(imageUrl, lastStatus || "unknown");
 };

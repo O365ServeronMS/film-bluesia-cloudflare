@@ -23,9 +23,9 @@ const metaImage = movie.thumb || movie.poster || "/icon-512.png";
     <section class="relative min-h-[560px] overflow-hidden">
       {heroImage && (
         <picture>
-          <source media="(min-width: 640px)" srcset={proxiedImage(heroImage, 720, 70, "backdrop")} />
+          <source media="(min-width: 640px)" srcset={proxiedImage(heroImage, "backdrop-desktop")} />
           <img
-            src={proxiedImage(heroImage, 360, 60, "backdrop")}
+            src={proxiedImage(heroImage, "backdrop-mobile")}
             alt={movie.name}
             class="absolute inset-0 h-full w-full object-cover opacity-60"
             fetchpriority="high"
@@ -43,8 +43,8 @@ const metaImage = movie.thumb || movie.poster || "/icon-512.png";
           <div class="w-36 shrink-0 overflow-hidden rounded-3xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
             {posterImage && (
               <picture>
-                <source media="(min-width: 640px)" srcset={proxiedImage(posterImage, 360, 60, "poster")} />
-                <img src={proxiedImage(posterImage, 360, 60, "poster")} alt={movie.name} class="aspect-[2/3] h-full w-full object-cover" loading="lazy" decoding="async" />
+                <source media="(min-width: 640px)" srcset={proxiedImage(posterImage, "poster-desktop")} />
+                <img src={proxiedImage(posterImage, "poster-mobile")} alt={movie.name} class="aspect-[2/3] h-full w-full object-cover" loading="lazy" decoding="async" />
               </picture>
             )}
           </div>

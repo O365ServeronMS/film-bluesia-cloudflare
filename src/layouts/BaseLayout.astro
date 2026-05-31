@@ -16,6 +16,8 @@ const {
   type = "website"
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname + Astro.url.search, "https://film.bluesia.net").toString();
+const pathname = Astro.url.pathname;
+const isDev = import.meta.env.DEV;
 ---
 
 <!doctype html>
@@ -61,12 +63,94 @@ const canonical = new URL(Astro.url.pathname + Astro.url.search, "https://film.b
         }
       }, true);
     </script>
+    {isDev && (
+      <script is:inline>
+        const NAV_CONTEXT_KEY = "film.bluesia.net:last-nav-section";
+        const NAV_PENDING_KEY = "film.bluesia.net:pending-navigation";
+
+        function navDebugLog(message, details) {
+          console.debug(`[nav] ${message}`, details || {});
+        }
+
+        function navActiveFromPath(pathname, contextKey) {
+          if (pathname === "/") return "home";
+          if (pathname.startsWith("/list/phim-le")) return "phim-le";
+          if (pathname.startsWith("/list/phim-bo")) return "phim-bo";
+          if (pathname.startsWith("/list/tv-shows")) return "tv-shows";
+          if (pathname.startsWith("/list/hoat-hinh")) return "hoat-hinh";
+          if (pathname.startsWith("/search")) return "search";
+          if (pathname.startsWith("/movie/") || pathname.startsWith("/watch/")) return contextKey || "";
+          return "";
+        }
+
+        function navContextFromPath(pathname) {
+          const active = navActiveFromPath(pathname, "");
+          return active && !["home", "search", "settings"].includes(active) ? active : "";
+        }
+
+        if ("scrollRestoration" in history) {
+          history.scrollRestoration = "auto";
+        }
+
+        document.addEventListener("click", (event) => {
+          const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+          if (!(link instanceof HTMLAnchorElement)) return;
+
+          const url = new URL(link.href, window.location.href);
+          if (url.origin !== window.location.origin) return;
+
+          navDebugLog("NAV_CLICK_TARGET", { href: url.pathname + url.search, from: window.location.pathname + window.location.search });
+
+          const contextKey = navContextFromPath(url.pathname);
+          if (contextKey) sessionStorage.setItem(NAV_CONTEXT_KEY, contextKey);
+
+          if (url.pathname.startsWith("/movie/") || url.pathname.startsWith("/watch/")) {
+            sessionStorage.setItem(NAV_PENDING_KEY, JSON.stringify({
+              from: window.location.pathname + window.location.search,
+              to: url.pathname + url.search,
+              time: Date.now()
+            }));
+          }
+        }, true);
+
+        window.addEventListener("pageshow", (event) => {
+          const current = window.location.pathname + window.location.search;
+          const contextKey = sessionStorage.getItem(NAV_CONTEXT_KEY) || "";
+          navDebugLog("NAV_ACTIVE_FROM_PATH", {
+            pathname: window.location.pathname,
+            active: navActiveFromPath(window.location.pathname, contextKey) || null
+          });
+
+          try {
+            const pending = JSON.parse(sessionStorage.getItem(NAV_PENDING_KEY) || "null");
+            if (pending?.to === current) {
+              navDebugLog("HISTORY_PUSH_CONFIRMED", pending);
+              sessionStorage.removeItem(NAV_PENDING_KEY);
+            }
+          } catch {
+            sessionStorage.removeItem(NAV_PENDING_KEY);
+          }
+
+          if (event.persisted || performance.getEntriesByType("navigation")[0]?.type === "back_forward") {
+            navDebugLog("BACK_RESTORED_ROUTE", { route: current });
+          }
+        });
+
+        window.addEventListener("popstate", () => {
+          navDebugLog("BACK_RESTORED_ROUTE", { route: window.location.pathname + window.location.search });
+        });
+
+        window.addEventListener("astro:page-load", () => {
+          navDebugLog("NAV_ROUTE_CHANGE", { route: window.location.pathname + window.location.search });
+        });
+      </script>
+    )}
     <slot name="head" />
   </head>
   <body class="font-sans antialiased">
     <main class="mx-auto min-h-screen w-full max-w-[720px] safe-bottom">
       <slot />
     </main>
-    <BottomNav client:load />
+    <BottomNav client:load initialPathname={pathname} />
   </body>
 </html>

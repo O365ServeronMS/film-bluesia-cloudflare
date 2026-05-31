@@ -10,10 +10,9 @@ const home = await getHome();
 const firstHeroImage = home.hero[0]?.thumb || home.hero[0]?.poster;
 const heroPreloadSrcSet = firstHeroImage
   ? proxiedImageCandidateSrcSet(firstHeroImage, [
-      { width: 360, quality: 60 },
-      { width: 720, quality: 70 },
-      { width: 960, quality: 72 }
-    ], "backdrop")
+      { profile: "backdrop-mobile", width: 780 },
+      { profile: "backdrop-desktop", width: 1280 }
+    ])
   : undefined;
 ---
 

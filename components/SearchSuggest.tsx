@@ -1,7 +1,7 @@
 "use client";
 
 /* Suggestion thumbnails use the app-owned /api/image proxy. */
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import type { MovieCard } from "@/lib/types";
 import { proxiedImage } from "@/lib/utils";
@@ -67,14 +67,6 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const q = query.trim();
-    if (!q) return;
-    setOpen(false);
-    window.location.href = "/search?q=" + encodeURIComponent(q);
-  }
-
   function changeQuery(nextQuery: string) {
     setQuery(nextQuery);
     if (nextQuery.trim().length < MIN_QUERY_LENGTH) {
@@ -83,15 +75,10 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
     }
   }
 
-  function openMovie(slug: string) {
-    setOpen(false);
-    window.location.href = "/movie/" + slug;
-  }
-
   const showPanel = open && query.trim().length >= MIN_QUERY_LENGTH;
 
   return (
-    <form ref={rootRef} onSubmit={submitSearch} className="relative min-w-0 flex-1">
+    <form ref={rootRef} action="/search" method="get" onSubmit={() => setOpen(false)} className="relative min-w-0 flex-1">
       <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-zinc-300 shadow-sm">
         <Search className="h-5 w-5 shrink-0" />
         <input
@@ -113,15 +100,15 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
           ) : state === "ready" ? (
             <div className="max-h-[70vh] overflow-y-auto py-1">
               {items.map((movie) => (
-                <button
+                <a
                   key={movie.slug}
-                  type="button"
-                  onClick={() => openMovie(movie.slug)}
+                  href={`/movie/${movie.slug}`}
+                  onClick={() => setOpen(false)}
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-white/10 focus:bg-white/10 focus:outline-none"
                 >
                   <span className="h-16 w-11 shrink-0 overflow-hidden rounded-md bg-zinc-900">
                     {movie.poster || movie.thumb ? (
-                      <img src={proxiedImage(movie.poster || movie.thumb, 360, 60, "thumb")} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                      <img src={proxiedImage(movie.poster || movie.thumb, "thumb-mobile")} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -133,7 +120,7 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
                       {movie.quality && <span>{movie.quality}</span>}
                     </span>
                   </span>
-                </button>
+                </a>
               ))}
             </div>
           ) : state === "empty" ? (

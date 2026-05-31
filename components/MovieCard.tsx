@@ -25,13 +25,13 @@ export function MovieCard({
 }) {
   const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
   const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
-  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, 360, 60, "thumb") : "";
-  const imageSrc = posterUrl ? proxiedImage(posterUrl, 360, 60, "poster") : "";
+  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, "thumb-mobile") : "";
+  const imageSrc = posterUrl ? proxiedImage(posterUrl, "poster-mobile") : "";
   const imageSrcSet = posterUrl
     ? proxiedImageCandidateSrcSet(posterUrl, [
-        { width: 360, quality: 60 },
-        { width: 720, quality: 70 }
-      ], "poster")
+        { profile: "poster-mobile", width: 360 },
+        { profile: "poster-desktop", width: 560 }
+      ])
     : undefined;
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";

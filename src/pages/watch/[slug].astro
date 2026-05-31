@@ -49,7 +49,7 @@ function resolveEmbedUrl(src: string | undefined) {
 const playerEmbed = resolveEmbedUrl(embed);
 const useEmbedPlayer = Boolean(playerEmbed) && (forceEmbed || (mobileUA && !forceHls));
 const title = `Watching - ${movie.originName || movie.name}`;
-const playerPoster = movie.thumb || movie.poster ? proxiedImage(movie.thumb || movie.poster, 720, 70, "backdrop") : undefined;
+const playerPoster = movie.thumb || movie.poster ? proxiedImage(movie.thumb || movie.poster, "backdrop-desktop") : undefined;
 
 if (playerEmbed || m3u8) {
   console.log("[cache] VIDEO_DIRECT_SOURCE_CONFIRMED", { slug, serverIndex, hasEmbed: Boolean(playerEmbed), hasM3u8: Boolean(m3u8) });

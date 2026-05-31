@@ -24,23 +24,29 @@ export function normalizeEpisodeName(value?: string, index = 0) {
   return clean.toLowerCase().startsWith("tập") ? clean : `Tập ${clean}`;
 }
 
-export function proxiedImage(src?: string, width?: number, quality?: number, type = "poster") {
+export type ImageProfile =
+  | "poster-mobile"
+  | "poster-desktop"
+  | "backdrop-mobile"
+  | "backdrop-desktop"
+  | "thumb-mobile"
+  | "thumb-desktop";
+
+export function proxiedImage(src?: string, profile: ImageProfile = "poster-mobile") {
   if (!src) return "";
   if (src.startsWith("/api/image")) return src;
   if (src.startsWith("/")) return src;
   const params = new URLSearchParams({ url: src });
-  if (type) params.set("type", type);
-  if (width) params.set("w", String(width));
-  if (quality) params.set("q", String(quality));
+  params.set("profile", profile);
   return `/api/image?${params.toString()}`;
 }
 
-export function proxiedImageSrcSet(src: string | undefined, widths: number[], quality?: number, type = "poster") {
+export function proxiedImageSrcSet(src: string | undefined, profiles: { profile: ImageProfile; width: number }[]) {
   if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return widths.map((width) => `${proxiedImage(src, width, quality, type)} ${width}w`).join(", ");
+  return profiles.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");
 }
 
-export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { width: number; quality?: number }[], type = "poster") {
+export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { profile: ImageProfile; width: number }[]) {
   if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return candidates.map(({ width, quality }) => `${proxiedImage(src, width, quality, type)} ${width}w`).join(", ");
+  return candidates.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");
 }

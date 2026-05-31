@@ -208,12 +208,11 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
         {activeImage && (
           <img
             key={`${active.slug}-${activeImage}`}
-            src={proxiedImage(activeImage, 720, 70, "backdrop")}
+            src={proxiedImage(activeImage, "backdrop-mobile")}
             srcSet={proxiedImageCandidateSrcSet(activeImage, [
-              { width: 360, quality: 60 },
-              { width: 720, quality: 70 },
-              { width: 960, quality: 72 }
-            ], "backdrop")}
+              { profile: "backdrop-mobile", width: 780 },
+              { profile: "backdrop-desktop", width: 1280 }
+            ])}
             sizes="(min-width: 640px) 688px, calc(100vw - 32px)"
             alt={active.name}
             loading={visibleIndex === 0 ? "eager" : "lazy"}

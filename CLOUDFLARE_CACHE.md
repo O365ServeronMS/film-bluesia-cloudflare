@@ -24,3 +24,24 @@ wrangler secret put CACHE_REFRESH_TOKEN
 - Search: no-store.
 
 Favorites, watch history, and settings remain client-side localStorage state and are not included in cached HTML.
+
+## Image cache profiles
+
+The image proxy writes only fixed WebP profiles to R2. Width, quality, format, and legacy `w=`, `q=`, `width=`, or `quality=` params do not create arbitrary R2 objects.
+
+R2 key format:
+
+```text
+cf-img-v3/{profile}/{hash-of-normalized-original-url}.webp
+```
+
+Allowed profiles:
+
+- `poster-mobile`: 360px, quality 65
+- `poster-desktop`: 560px, quality 75
+- `backdrop-mobile`: 780px, quality 60
+- `backdrop-desktop`: 1280px, quality 70
+- `thumb-mobile`: 320px, quality 65
+- `thumb-desktop`: 480px, quality 70
+
+New image responses flow through edge cache, then R2, then OPhim origin. Failed, empty, or non-WebP optimized responses are not written to R2.

@@ -2,6 +2,7 @@ node_modules/
 .astro/
 .vite-cache/
 .vite-cache-build/
+.vite-cache-verify/
 .wrangler-config/
 .wrangler-cache/
 .wrangler/
