@@ -1,31 +1,38 @@
 import { Heart, Star } from "lucide-react";
-import { LazyImage } from "@/components/LazyImage";
 import type { MovieCard as MovieCardType } from "@/lib/types";
 import { proxiedImage, proxiedImageCandidateSrcSet, ratingLabel } from "@/lib/utils";
+
+function validHttpImage(value?: string) {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
 
 export function MovieCard({
   movie,
   compact = false,
   headingLevel = 3,
-  deferImage = false,
   priority = false
 }: {
   movie: MovieCardType;
   compact?: boolean;
   headingLevel?: 2 | 3;
-  deferImage?: boolean;
   priority?: boolean;
 }) {
-  const image = movie.poster || movie.thumb;
-  const imageSrc = image ? proxiedImage(image, 360, 60) : "";
-  const mobileImageSrcSet = image ? proxiedImageCandidateSrcSet(image, [
-    { width: 360, quality: 60 }
-  ]) : "";
-  const desktopImageSrcSet = image ? proxiedImageCandidateSrcSet(image, [
-    { width: 720, quality: 70 }
-  ]) : "";
-  const mobileImageSizes = "31vw";
-  const desktopImageSizes = "720px";
+  const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
+  const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
+  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, 360, 60, "thumb") : "";
+  const imageSrc = posterUrl ? proxiedImage(posterUrl, 360, 60, "poster") : "";
+  const imageSrcSet = posterUrl
+    ? proxiedImageCandidateSrcSet(posterUrl, [
+        { width: 360, quality: 60 },
+        { width: 720, quality: 70 }
+      ], "poster")
+    : undefined;
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
 
@@ -33,34 +40,26 @@ export function MovieCard({
     <a href={`/movie/${movie.slug}`} className="group block min-w-0">
       <article className="overflow-hidden rounded-2xl bg-card shadow-xl shadow-black/20 ring-1 ring-white/5 transition duration-300 group-hover:-translate-y-1 group-hover:ring-gold/50">
         <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
-          {image ? (
-            deferImage && !priority ? (
-              <LazyImage
+          {posterUrl ? (
+            <>
+              <img
                 src={imageSrc}
-                srcSet={mobileImageSrcSet}
-                desktopSrcSet={desktopImageSrcSet}
-                sizes={mobileImageSizes}
-                desktopSizes={desktopImageSizes}
+                srcSet={imageSrcSet}
+                sizes="(min-width: 640px) 180px, 31vw"
                 alt={movie.name}
+                loading={priority ? "eager" : "lazy"}
+                fetchPriority={priority ? "high" : undefined}
+                decoding="async"
+                data-movie-poster
+                data-fallback-src={fallbackImage || undefined}
                 className={imageClassName}
               />
-            ) : (
-              <picture>
-                <source media="(min-width: 640px)" srcSet={desktopImageSrcSet} sizes={desktopImageSizes} />
-                <img
-                  src={imageSrc}
-                  srcSet={mobileImageSrcSet}
-                  sizes={mobileImageSizes}
-                  alt={movie.name}
-                  loading={priority ? "eager" : "lazy"}
-                  fetchPriority={priority ? "high" : "auto"}
-                  decoding="async"
-                  className={imageClassName}
-                />
-              </picture>
-            )
+              <div hidden className="movie-card-image-fallback grid h-full place-items-center px-4 text-center text-sm text-zinc-500">
+                No image
+              </div>
+            </>
           ) : (
-            <div className="grid h-full place-items-center px-4 text-center text-sm text-zinc-500">Không có ảnh</div>
+            <div className="grid h-full place-items-center px-4 text-center text-sm text-zinc-500">No image</div>
           )}
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] font-bold text-gold backdrop-blur">

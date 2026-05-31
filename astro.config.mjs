@@ -18,7 +18,7 @@ export default defineConfig({
     }
   }),
   vite: {
-    cacheDir: ".vite-cache-build",
+    cacheDir: process.env.VITE_CACHE_DIR || ".vite-cache-build",
     resolve: {
       alias: {
         "@": new URL(".", import.meta.url).pathname,

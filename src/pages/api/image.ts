@@ -7,6 +7,7 @@ const VARIANTS = [
   { width: 720, quality: 70 },
   { width: 960, quality: 72 }
 ] as const;
+const IMAGE_STALE_WHILE_REVALIDATE_SECONDS = 86400;
 
 function numberParam(value: string | null, fallback: number) {
   const parsed = Number(value);
@@ -38,6 +39,31 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function cacheLog(message: string, details?: Record<string, unknown>) {
+  console.log(`[cache] ${message}`, details || {});
+}
+
+async function sha256(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function imageType(value: string | null) {
+  const type = String(value || "poster").trim().toLowerCase();
+  return ["poster", "backdrop", "thumb"].includes(type) ? type : "poster";
+}
+
+function imageVariant(width: number) {
+  return width <= 360 ? "iphone" : "desktop";
+}
+
+function negotiatedFormat(request: Request) {
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("image/avif")) return "avif";
+  if (accept.includes("image/webp")) return "webp";
+  return "jpeg";
+}
+
 function imageCandidates(imageUrl: string) {
   const url = safeUrl(imageUrl);
   if (!url) return [];
@@ -60,8 +86,8 @@ function imageCandidates(imageUrl: string) {
   return unique(candidates);
 }
 
-function cacheKey(imageUrl: string, width: number, quality: number) {
-  return `cf-auto-v1:q${quality}:w${width}:${imageUrl}`;
+async function cacheKey(imageUrl: string, type: string, width: number, format: string) {
+  return `images/${type}/${await sha256(imageUrl)}/${imageVariant(width)}.${format}`;
 }
 
 function imageHeaders(options: {
@@ -72,7 +98,7 @@ function imageHeaders(options: {
   etag?: string;
 }) {
   const ttl = imageCacheTtlSeconds();
-  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=2592000, immutable`;
+  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
   return {
     "Content-Type": options.contentType,
     "Cache-Control": cacheControl,
@@ -91,7 +117,7 @@ function imageHeaders(options: {
 
 function notModified(etag: string) {
   const ttl = imageCacheTtlSeconds();
-  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=2592000, immutable`;
+  const cacheControl = `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
   return new Response(null, {
     status: 304,
     headers: {
@@ -123,16 +149,18 @@ async function fetchImage(url: string, variant: { width: number; quality: number
 export const GET: APIRoute = async ({ request, url }) => {
   const rawUrl = url.searchParams.get("url") || "";
   const imageUrl = decodeURIComponent(rawUrl);
+  const type = imageType(url.searchParams.get("type"));
   const requestedWidth = numberParam(url.searchParams.get("w"), 720);
   const requestedQuality = numberParam(url.searchParams.get("q"), 70);
   const variant = approvedVariant(requestedWidth, requestedQuality);
+  const format = negotiatedFormat(request);
   const candidates = imageCandidates(imageUrl);
 
   if (!candidates.length) {
     return Response.json({ error: "Invalid image URL" }, { status: 400 });
   }
 
-  const key = cacheKey(imageUrl, variant.width, variant.quality);
+  const key = await cacheKey(imageUrl, type, variant.width, format);
   const ifNoneMatch = request.headers.get("if-none-match") || "";
   const cached = await readBinaryCache("images", key, imageCacheTtlSeconds());
   if (cached) {
@@ -153,12 +181,14 @@ export const GET: APIRoute = async ({ request, url }) => {
   for (const candidate of candidates) {
     for (const transform of [true, false]) {
       try {
+        cacheLog("IMAGE_ORIGIN_FETCH", { sourceUrl: candidate, width: variant.width, quality: variant.quality, transform });
         const upstream = await fetchImage(candidate, variant, transform);
         lastStatus = upstream.status;
         const contentType = upstream.headers.get("content-type") || "";
         if (!upstream.ok || !contentType.toLowerCase().startsWith("image/")) continue;
 
         const body = new Uint8Array(await upstream.arrayBuffer());
+        cacheLog(transform ? "IMAGE_OPTIMIZE_OK" : "IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, contentType, bytes: body.byteLength });
         const { etag, skipped } = await writeBinaryCache("images", key, body, contentType, candidate);
         if (ifNoneMatch && ifNoneMatch.includes(etag)) return notModified(etag);
 
@@ -172,10 +202,23 @@ export const GET: APIRoute = async ({ request, url }) => {
           })
         });
       } catch {
+        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, transform });
         continue;
       }
     }
   }
 
-  return Response.json({ error: `Image upstream error ${lastStatus || "unknown"}` }, { status: 502 });
+  cacheLog("IMAGE_FALLBACK_PLACEHOLDER", { imageUrl, status: lastStatus || "unknown" });
+  return new Response(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540"><rect width="360" height="540" fill="#18181b"/><text x="180" y="270" fill="#71717a" font-family="Arial,sans-serif" font-size="22" text-anchor="middle">No image</text></svg>`,
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "no-store",
+        "X-Film-Bluesia-Net-Cache": "FALLBACK",
+        "X-Film-Bluesia-Net-Cache-Type": "image"
+      }
+    }
+  );
 };

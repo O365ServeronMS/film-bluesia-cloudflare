@@ -12,9 +12,15 @@ import type {
   SourceTaxonomyPayload
 } from "@/lib/types";
 import { buildSmartSpotlight, type SpotlightCandidate } from "@/lib/spotlight";
-import { detailCacheTtlSeconds, listCacheTtlSeconds, readJsonCache, searchCacheTtlSeconds, taxonomyCacheTtlSeconds, writeJsonCache } from "@/lib/cache";
+import { isCacheEntryFresh, listCacheTtlSeconds, logCacheEvent, readJsonCache, readJsonCacheEntry, searchCacheTtlSeconds, taxonomyCacheTtlSeconds, writeJsonCache } from "@/lib/cache";
 import { buildVsembedServer } from "@/lib/vsembed";
 import { normalizedEpisodeName, normalizedEpisodeSlug } from "@/lib/episodes";
+
+export const IMAGE_CACHE_TTL_SECONDS = 1296000;
+export const LIST_CACHE_TTL_SECONDS = 3600;
+export const MOVIE_LONG_CACHE_TTL_SECONDS = 1296000;
+export const MOVIE_SHORT_CACHE_TTL_SECONDS = 3600;
+export const SEARCH_CACHE_TTL_SECONDS = 0;
 
 const BASE_URL = (process.env.OPHIM_BASE_URL || "https://ophim1.com").replace(/\/$/, "");
 const CDN_FALLBACKS = [
@@ -77,13 +83,13 @@ function jsonNoStoreFetchOptions() {
 
 function jsonCachePolicy(path: string, fallbackSeconds = 600) {
   if (/\/v1\/api\/danh-sach\//.test(path) || /\/danh-sach\//.test(path) || /\/quoc-gia\//.test(path)) {
-    return { namespace: "metadata-list", ttlSeconds: listCacheTtlSeconds() };
+    return { namespace: "metadata-list", ttlSeconds: listCacheTtlSeconds() || LIST_CACHE_TTL_SECONDS };
   }
   if (/\/v1\/api\/tim-kiem/.test(path)) {
     return { namespace: "metadata-search", ttlSeconds: searchCacheTtlSeconds() };
   }
   if (/^\/phim\//.test(path)) {
-    return { namespace: "metadata-detail", ttlSeconds: detailCacheTtlSeconds() };
+    return { namespace: "metadata-detail", ttlSeconds: MOVIE_LONG_CACHE_TTL_SECONDS };
   }
   if (/^\/(the-loai|quoc-gia)$/.test(path)) {
     return { namespace: "metadata-taxonomy", ttlSeconds: taxonomyCacheTtlSeconds() };
@@ -105,11 +111,11 @@ async function fetchJson<T>(path: string, revalidate = 600): Promise<T> {
     }
 
     const data = await res.json() as T;
-    await writeJsonCache(policy.namespace, cacheKey, data, url);
+    if (policy.ttlSeconds > 0) {
+      await writeJsonCache(policy.namespace, cacheKey, data, url, policy.ttlSeconds);
+    }
     return data;
   } catch (error) {
-    const stale = await readJsonCache<T>(policy.namespace, cacheKey, policy.ttlSeconds, true);
-    if (stale) return stale;
     throw error;
   }
 }
@@ -123,23 +129,56 @@ function sourceEpisodeHasPlayableLink(episode: { link_embed?: string; linkEmbed?
   return Boolean(episode?.link_embed || episode?.linkEmbed || episode?.link_m3u8 || episode?.linkM3u8);
 }
 
-function sourceMoviePayloadNeedsPlayableRefresh(payload?: SourceMoviePayload) {
-  const servers = sourceEpisodeServers(payload);
-  const episodes = servers.flatMap((server) => {
+function sourceMoviePayloadHasPlayableLink(payload?: SourceMoviePayload) {
+  return sourceEpisodeServers(payload).some((server) => {
     const serverData = server?.server_data || server?.serverData || [];
-    return Array.isArray(serverData) ? serverData : [];
+    return Array.isArray(serverData) && serverData.some(sourceEpisodeHasPlayableLink);
   });
+}
 
-  return episodes.length > 0 && !episodes.some(sourceEpisodeHasPlayableLink);
+function statusText(value?: string) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function sourceMoviePayloadIsStableFull(payload?: SourceMoviePayload) {
+  const movieRaw = payload?.movie || payload?.data?.item || payload?.data?.movie || payload?.data || {};
+  const status = statusText(movieRaw?.status);
+  const episodeCurrent = statusText(movieRaw?.episode_current || movieRaw?.episodeCurrent);
+  const isTrailerOrUpcoming = /trailer|upcoming|coming|sap|chua/.test(`${status} ${episodeCurrent}`);
+  const isFullOrCompleted = /completed|complete|full|hoan tat/.test(`${status} ${episodeCurrent}`);
+  return !isTrailerOrUpcoming && isFullOrCompleted && sourceMoviePayloadHasPlayableLink(payload);
+}
+
+export function movieDetailCachePolicy(movie: MovieDetail) {
+  const status = statusText(movie.status);
+  const episodeCurrent = statusText(movie.episodeCurrent);
+  const isTrailerOrUpcoming = /trailer|upcoming|coming|sap|chua/.test(`${status} ${episodeCurrent}`);
+  const isFullOrCompleted = /completed|complete|full|hoan tat/.test(`${status} ${episodeCurrent}`);
+  const hasPlayableLink = movie.episodes.some((server) =>
+    server.serverData.some((episode) => Boolean(episode.linkEmbed || episode.linkM3u8))
+  );
+  const stableFull = !isTrailerOrUpcoming && isFullOrCompleted && hasPlayableLink;
+  return {
+    cacheClass: stableFull ? "full" : "short",
+    ttlSeconds: stableFull ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS
+  };
 }
 
 async function fetchMoviePayload(slug: string): Promise<SourceMoviePayload> {
   const path = `/phim/${encodeURIComponent(slug)}`;
   const url = `${BASE_URL}${path}`;
-  const policy = jsonCachePolicy(path, 300);
-  const cached = await readJsonCache<SourceMoviePayload>(policy.namespace, url, policy.ttlSeconds);
+  const policy = jsonCachePolicy(path, MOVIE_SHORT_CACHE_TTL_SECONDS);
+  const cachedEntry = await readJsonCacheEntry<SourceMoviePayload>(policy.namespace, url, MOVIE_LONG_CACHE_TTL_SECONDS, true);
+  const cached = cachedEntry?.value;
+  const cachedTtl = cached && sourceMoviePayloadIsStableFull(cached) ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS;
 
-  if (cached && !sourceMoviePayloadNeedsPlayableRefresh(cached)) {
+  if (cached && cachedEntry && isCacheEntryFresh(cachedEntry.cachedAt, cachedTtl)) {
+    logCacheEvent(cachedTtl === MOVIE_LONG_CACHE_TTL_SECONDS ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
+      namespace: policy.namespace,
+      key: url,
+      slug,
+      ttlSeconds: cachedTtl
+    });
     return cached;
   }
 
@@ -150,15 +189,16 @@ async function fetchMoviePayload(slug: string): Promise<SourceMoviePayload> {
     }
 
     const data = await res.json() as SourceMoviePayload;
-    if (!cached || !sourceMoviePayloadNeedsPlayableRefresh(data)) {
-      await writeJsonCache(policy.namespace, url, data, url);
-      return data;
-    }
-
-    return cached;
+    const freshTtl = sourceMoviePayloadIsStableFull(data) ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS;
+    await writeJsonCache(policy.namespace, url, data, url, freshTtl);
+    logCacheEvent(sourceMoviePayloadIsStableFull(data) ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
+      namespace: policy.namespace,
+      key: url,
+      slug,
+      ttlSeconds: freshTtl
+    });
+    return data;
   } catch (error) {
-    const stale = cached || await readJsonCache<SourceMoviePayload>(policy.namespace, url, policy.ttlSeconds, true);
-    if (stale) return stale;
     throw error;
   }
 }
@@ -172,6 +212,10 @@ function cleanImage(input?: string, cdn?: string) {
   if (!input) return "";
   const src = String(input).trim();
   if (!src) return "";
+
+  if (src.startsWith("//")) {
+    return cleanImage(`https:${src}`, cdn);
+  }
 
   if (/^https?:\/\//i.test(src)) {
     try {
@@ -229,8 +273,8 @@ export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
     name: pickName(raw),
     originName: raw?.origin_name || raw?.originName || raw?.original_name || undefined,
     slug: raw?.slug || raw?._id || raw?.id || "",
-    poster: cleanImage(raw?.poster_url || raw?.poster || raw?.thumb_url, cdn),
-    thumb: cleanImage(raw?.thumb_url || raw?.poster_url || raw?.thumbnail, cdn),
+    poster: cleanImage(raw?.poster_url || raw?.poster || raw?.thumb_url || raw?.thumb || raw?.thumbnail, cdn),
+    thumb: cleanImage(raw?.thumb_url || raw?.thumb || raw?.poster_url || raw?.poster || raw?.thumbnail, cdn),
     year: raw?.year || raw?.publish_year || undefined,
     quality: raw?.quality || raw?.video_quality || raw?.quality_name || undefined,
     lang: raw?.lang || raw?.language || undefined,

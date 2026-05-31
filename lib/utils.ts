@@ -24,22 +24,23 @@ export function normalizeEpisodeName(value?: string, index = 0) {
   return clean.toLowerCase().startsWith("tập") ? clean : `Tập ${clean}`;
 }
 
-export function proxiedImage(src?: string, width?: number, quality?: number) {
+export function proxiedImage(src?: string, width?: number, quality?: number, type = "poster") {
   if (!src) return "";
   if (src.startsWith("/api/image")) return src;
   if (src.startsWith("/")) return src;
   const params = new URLSearchParams({ url: src });
+  if (type) params.set("type", type);
   if (width) params.set("w", String(width));
   if (quality) params.set("q", String(quality));
   return `/api/image?${params.toString()}`;
 }
 
-export function proxiedImageSrcSet(src: string | undefined, widths: number[], quality?: number) {
+export function proxiedImageSrcSet(src: string | undefined, widths: number[], quality?: number, type = "poster") {
   if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return widths.map((width) => `${proxiedImage(src, width, quality)} ${width}w`).join(", ");
+  return widths.map((width) => `${proxiedImage(src, width, quality, type)} ${width}w`).join(", ");
 }
 
-export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { width: number; quality?: number }[]) {
+export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { width: number; quality?: number }[], type = "poster") {
   if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return candidates.map(({ width, quality }) => `${proxiedImage(src, width, quality)} ${width}w`).join(", ");
+  return candidates.map(({ width, quality }) => `${proxiedImage(src, width, quality, type)} ${width}w`).join(", ");
 }

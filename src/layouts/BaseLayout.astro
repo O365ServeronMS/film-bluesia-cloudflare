@@ -41,6 +41,26 @@ const canonical = new URL(Astro.url.pathname + Astro.url.search, "https://film.b
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
+    <script is:inline>
+      document.addEventListener("error", (event) => {
+        const image = event.target;
+        if (!(image instanceof HTMLImageElement) || !image.matches("img[data-movie-poster]")) return;
+
+        const fallback = image.dataset.fallbackSrc || "";
+        const fallbackHref = fallback ? new URL(fallback, window.location.href).href : "";
+        if (fallbackHref && image.currentSrc !== fallbackHref && image.src !== fallbackHref) {
+          image.dataset.fallbackSrc = "";
+          image.src = fallbackHref;
+          return;
+        }
+
+        image.hidden = true;
+        const fallbackNode = image.nextElementSibling;
+        if (fallbackNode instanceof HTMLElement && fallbackNode.classList.contains("movie-card-image-fallback")) {
+          fallbackNode.hidden = false;
+        }
+      }, true);
+    </script>
     <slot name="head" />
   </head>
   <body class="font-sans antialiased">

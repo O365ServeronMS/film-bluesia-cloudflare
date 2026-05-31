@@ -15,15 +15,18 @@
   ],
   "r2_buckets": [
     {
-      "binding": "BLUESIA_CACHE_R2",
+      "binding": "IMAGE_CACHE",
       "bucket_name": "film-bluesia-cache"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "e16247af8b894bdaa78723303149b900"
     }
   ],
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://film.bluesia.net",
-    "BLUESIA_CACHE_MAX_BYTES": "524288000",
-    "BLUESIA_CACHE_METADATA_MAX_BYTES": "104857600",
-    "BLUESIA_CACHE_IMAGE_MAX_BYTES": "419430400",
     "BLUESIA_IMAGE_TRANSFORM_MODE": "cloudflare-free"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Play } from "lucide-react";
+import { proxiedImage } from "@/lib/utils";
 
 type IframePlayerFacadeProps = {
   src: string;
@@ -33,7 +34,7 @@ export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadePro
       {poster ? (
         <picture>
           <img
-            src={poster}
+            src={proxiedImage(poster, 720, 70, "backdrop")}
             alt={title}
             className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-30"
             loading="eager"

@@ -27,12 +27,23 @@ type R2Bucket = {
   }>;
 };
 
+type KVNamespace = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number; metadata?: Record<string, string> }): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
+    keys: Array<{ name: string; metadata?: Record<string, string> }>;
+    list_complete: boolean;
+    cursor?: string;
+  }>;
+};
+
 type CloudflareRuntime = {
   env: {
-    BLUESIA_CACHE_R2?: R2Bucket;
-    BLUESIA_CACHE_MAX_BYTES?: string;
-    BLUESIA_CACHE_METADATA_MAX_BYTES?: string;
-    BLUESIA_CACHE_IMAGE_MAX_BYTES?: string;
+    KV?: KVNamespace;
+    IMAGE_CACHE?: R2Bucket;
+    MOVIE_METADATA?: KVNamespace;
+    CACHE_REFRESH_TOKEN?: string;
     OPHIM_BASE_URL?: string;
     VSEMBED_EMBED_BASE_URL?: string;
     VSEMBED_MOBILE_EMBED_HOST?: string;
