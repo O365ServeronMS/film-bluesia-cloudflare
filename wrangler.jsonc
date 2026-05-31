@@ -16,6 +16,14 @@
   "triggers": {
     "crons": ["*/30 * * * *"]
   },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   "r2_buckets": [
     {
       "binding": "IMAGE_CACHE",
