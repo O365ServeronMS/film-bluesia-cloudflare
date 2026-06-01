@@ -12,8 +12,6 @@ export function stripHtml(value?: string) {
 
 type RatingSource = {
   imdbRating?: number;
-  tmdbRating?: number;
-  tmdb?: { vote_average?: number };
   imdb?: { rating?: number };
 };
 
@@ -28,10 +26,8 @@ function formatRating(value: number) {
 
 export function getDisplayRating(movie: RatingSource) {
   const imdb = normalizedRating(movie.imdbRating) || normalizedRating(movie.imdb?.rating);
-  const tmdb = normalizedRating(movie.tmdbRating) || normalizedRating(movie.tmdb?.vote_average);
 
   if (imdb) return { label: "IMDb", score: imdb, text: `IMDb ${formatRating(imdb)}` };
-  if (tmdb) return { label: "TMDB", score: tmdb, text: `TMDB ${formatRating(tmdb)}` };
   return null;
 }
 
