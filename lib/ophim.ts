@@ -271,7 +271,7 @@ export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
   const tmdb = sourceRating(raw?.tmdb || raw?.tmdb_rating || raw?.rating);
   const imdb = sourceRating(raw?.imdb || raw?.imdb_rating);
   const tmdbRating = Number(tmdb?.vote_average || tmdb?.rating || 0) || undefined;
-  const imdbRating = Number(imdb?.rating || 0) || undefined;
+  const imdbRating = Number(imdb?.rating || imdb?.vote_average || 0) || undefined;
   const categoryName = labelText(raw?.category);
   const countryName = labelText(raw?.country);
 
@@ -297,7 +297,8 @@ export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
     },
     imdb: {
       id: imdb?.id == null ? undefined : String(imdb.id),
-      rating: imdbRating
+      rating: imdbRating,
+      vote_count: Number(imdb?.vote_count || 0) || undefined
     },
     country: countryName,
     category: categoryName
