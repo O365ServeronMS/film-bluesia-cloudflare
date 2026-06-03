@@ -1,8 +1,8 @@
 import { cacheBypassRefresh, runtimeEnv } from "@/lib/runtime-env";
 
 const IMAGE_TTL_SECONDS = 60 * 60 * 24 * 15;
-const DETAIL_TTL_SECONDS = 60 * 60 * 24 * 15;
-const LIST_TTL_SECONDS = 60 * 60;
+const DETAIL_TTL_SECONDS = 60 * 60 * 24 * 90;
+const LIST_TTL_SECONDS = 60 * 30;
 const SEARCH_TTL_SECONDS = 0;
 const ERROR_TTL_SECONDS = 60;
 

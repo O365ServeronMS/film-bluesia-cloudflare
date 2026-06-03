@@ -4,8 +4,8 @@ import { setCacheBypassRefresh, setRuntimeEnv } from "@/lib/runtime-env";
 const CACHEABLE_LIST_TYPES = new Set(["phim-le", "phim-bo", "tv-shows", "hoat-hinh"]);
 const PRIVATE_HTML_PATHS = new Set(["/favorites", "/history", "/settings"]);
 const LIST_HTML_TTL_SECONDS = 1800;
-const MOVIE_LONG_HTML_TTL_SECONDS = 1296000;
-const MOVIE_SHORT_HTML_TTL_SECONDS = 3600;
+const MOVIE_LONG_HTML_TTL_SECONDS = 7776000;
+const MOVIE_SHORT_HTML_TTL_SECONDS = 86400;
 const STALE_WHILE_REVALIDATE_SECONDS = 1800;
 const DEFAULT_HTML_CACHE_VERSION = "2026-06-01-ophim-imdb-v5";
 

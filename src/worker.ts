@@ -26,7 +26,7 @@ export function createExports(manifest: Parameters<typeof createAstroExports>[0]
       fetch: astro.fetch,
       async scheduled(controller: ScheduledController, env: WorkerEnv) {
         setRuntimeEnv(env);
-        setCacheBypassRefresh(true);
+        setCacheBypassRefresh(false);
         const startedAt = Date.now();
         console.log("[cache] OPHIM_REFRESH_START", {
           cron: controller.cron,

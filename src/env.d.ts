@@ -43,6 +43,7 @@ type CloudflareRuntime = {
     KV?: KVNamespace;
     IMAGE_CACHE?: R2Bucket;
     MOVIE_METADATA?: KVNamespace;
+    ADMIN_REFRESH_TOKEN?: string;
     CACHE_REFRESH_TOKEN?: string;
     OPHIM_BASE_URL?: string;
     OPHIM_REFRESH_MAX_MOVIES?: string;

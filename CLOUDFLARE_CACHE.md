@@ -6,14 +6,16 @@ This deployment uses Cloudflare-native cache storage only.
 
 - `IMAGE_CACHE`: R2 bucket for poster, backdrop, and thumbnail binaries.
 - `KV`: KV namespace for OPhim JSON metadata. `MOVIE_METADATA` is also supported as a backward-compatible binding name.
+- `ADMIN_REFRESH_TOKEN`: secret used by `POST /api/admin/refresh` for protected manual OPhim refreshes.
 - `CACHE_REFRESH_TOKEN`: secret used by `?refresh=1&token=...` to bypass HTML and metadata cache.
 - `HTML_CACHE_VERSION`: version segment added to internal HTML cache keys. Bump this when a deployment should ignore previously cached HTML that may reference old hashed Astro assets.
-- `OPHIM_REFRESH_MAX_MOVIES`: maximum latest movies to detail-refresh per scheduled run. Defaults to `12`.
-- `OPHIM_REFRESH_DELAY_MS`: delay between detail refresh requests. Defaults to `1250`.
+- `OPHIM_REFRESH_MAX_MOVIES`: maximum latest movies to detail-refresh per scheduled run. Defaults to `6`.
+- `OPHIM_REFRESH_DELAY_MS`: delay between detail refresh requests. Defaults to `1500`.
 
 The production KV namespace is configured in `wrangler.jsonc`:
 
 ```powershell
+wrangler secret put ADMIN_REFRESH_TOKEN
 wrangler secret put CACHE_REFRESH_TOKEN
 ```
 
@@ -23,8 +25,8 @@ wrangler secret put CACHE_REFRESH_TOKEN
 - Home and list HTML, API responses, and metadata: `1800` seconds with `1800` seconds stale-while-revalidate.
 - Taxonomy metadata: `1800` seconds.
 - Movie detail HTML and metadata:
-  - `1296000` seconds when the movie is completed/full and has a playable episode link.
-  - `3600` seconds for trailers, upcoming movies, missing episode data, or no playable links.
+  - `7776000` seconds when the movie is completed/full and has a playable episode link.
+  - `86400` seconds for ongoing series, trailers, upcoming movies, missing episode data, or no playable links.
 - Search: no-store.
 
 Favorites, watch history, and settings remain client-side localStorage state and are not included in cached HTML.
@@ -37,11 +39,35 @@ HTML cache keys include `HTML_CACHE_VERSION` internally. This prevents a cached 
 
 ```json
 "triggers": {
-  "crons": ["*/30 * * * *"]
+  "crons": ["0 */2 * * *"]
 }
 ```
 
-The custom Worker entrypoint in `src/worker.ts` preserves Astro's `fetch` handler and adds `scheduled()`. Each run bypasses KV reads, refreshes page 1 of `phim-moi-cap-nhat`, then refreshes detail metadata for up to `OPHIM_REFRESH_MAX_MOVIES` slugs sequentially with `OPHIM_REFRESH_DELAY_MS` between requests. Logs use `OPHIM_REFRESH_START`, `OPHIM_REFRESH_DONE`, `OPHIM_REFRESH_SUCCESS`, and `OPHIM_REFRESH_FAIL`.
+The custom Worker entrypoint in `src/worker.ts` preserves Astro's `fetch` handler and adds `scheduled()`. Each run respects KV freshness, checks page 1 of `phim-moi-cap-nhat`, then refreshes stale or missing detail metadata for up to `OPHIM_REFRESH_MAX_MOVIES` slugs sequentially with `OPHIM_REFRESH_DELAY_MS` between requests. Logs use `OPHIM_REFRESH_START`, `OPHIM_REFRESH_DONE`, `OPHIM_REFRESH_SUCCESS`, and `OPHIM_REFRESH_FAIL`, including `listItems`, `detailAttempts`, `detailOk`, `detailSkippedFresh`, `detailFailed`, and `durationMs`.
+
+## Manual OPhim refresh
+
+Protected manual refreshes use `POST /api/admin/refresh` with `x-refresh-token: <ADMIN_REFRESH_TOKEN>`. The token is read from Worker secrets and must not be committed.
+
+Refresh latest titles while respecting cache TTL:
+
+```powershell
+curl -X POST https://film.bluesia.net/api/admin/refresh `
+  -H "content-type: application/json" `
+  -H "x-refresh-token: $ADMIN_REFRESH_TOKEN" `
+  -d '{"mode":"latest","force":false}'
+```
+
+Force refresh one movie detail:
+
+```powershell
+curl -X POST https://film.bluesia.net/api/admin/refresh `
+  -H "content-type: application/json" `
+  -H "x-refresh-token: $ADMIN_REFRESH_TOKEN" `
+  -d '{"mode":"movie","slug":"ten-phim","force":true}'
+```
+
+The endpoint allows only `POST`, returns `401` for missing or invalid tokens, and rate-limits authenticated requests to 5 per 10 minutes using KV when available.
 
 ## Image cache profiles
 

@@ -15,14 +15,15 @@ import { buildSmartSpotlight, type SpotlightCandidate } from "@/lib/spotlight";
 import { isCacheEntryFresh, listCacheTtlSeconds, logCacheEvent, readJsonCache, readJsonCacheEntry, searchCacheTtlSeconds, taxonomyCacheTtlSeconds, writeJsonCache } from "@/lib/cache";
 import { buildVsembedServer } from "@/lib/vsembed";
 import { normalizedEpisodeName, normalizedEpisodeSlug } from "@/lib/episodes";
+import { setCacheBypassRefresh } from "@/lib/runtime-env";
 
 export const IMAGE_CACHE_TTL_SECONDS = 1296000;
 export const LIST_CACHE_TTL_SECONDS = 1800;
-export const MOVIE_LONG_CACHE_TTL_SECONDS = 1296000;
-export const MOVIE_SHORT_CACHE_TTL_SECONDS = 3600;
+export const MOVIE_LONG_CACHE_TTL_SECONDS = 7776000;
+export const MOVIE_SHORT_CACHE_TTL_SECONDS = 86400;
 export const SEARCH_CACHE_TTL_SECONDS = 0;
-export const OPHIM_REFRESH_MAX_MOVIES = 12;
-export const OPHIM_REFRESH_DELAY_MS = 1250;
+export const OPHIM_REFRESH_MAX_MOVIES = 6;
+export const OPHIM_REFRESH_DELAY_MS = 1500;
 
 const BASE_URL = (process.env.OPHIM_BASE_URL || "https://ophim1.com").replace(/\/$/, "");
 const CDN_FALLBACKS = [
@@ -166,22 +167,46 @@ export function movieDetailCachePolicy(movie: MovieDetail) {
   };
 }
 
-async function fetchMoviePayload(slug: string): Promise<SourceMoviePayload> {
-  const path = `/phim/${encodeURIComponent(slug)}`;
+type MoviePayloadFetchResult = {
+  payload: SourceMoviePayload;
+  refreshed: boolean;
+  cacheClass: "full" | "short";
+  ttlSeconds: number;
+};
+
+function moviePayloadCacheInfo(payload?: SourceMoviePayload) {
+  const stableFull = sourceMoviePayloadIsStableFull(payload);
+  return {
+    cacheClass: stableFull ? "full" as const : "short" as const,
+    ttlSeconds: stableFull ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS
+  };
+}
+
+function validateMovieSlug(slug: string) {
+  const safeSlug = String(slug || "").trim();
+  if (!safeSlug || safeSlug.length > 160 || /[/?#\s]/.test(safeSlug)) {
+    throw new Error("Invalid movie slug");
+  }
+  return safeSlug;
+}
+
+async function fetchMoviePayloadWithInfo(slug: string): Promise<MoviePayloadFetchResult> {
+  const safeSlug = validateMovieSlug(slug);
+  const path = `/phim/${encodeURIComponent(safeSlug)}`;
   const url = `${BASE_URL}${path}`;
   const policy = jsonCachePolicy(path, MOVIE_SHORT_CACHE_TTL_SECONDS);
   const cachedEntry = await readJsonCacheEntry<SourceMoviePayload>(policy.namespace, url, MOVIE_LONG_CACHE_TTL_SECONDS, true);
   const cached = cachedEntry?.value;
-  const cachedTtl = cached && sourceMoviePayloadIsStableFull(cached) ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS;
+  const cachedInfo = moviePayloadCacheInfo(cached);
 
-  if (cached && cachedEntry && isCacheEntryFresh(cachedEntry.cachedAt, cachedTtl)) {
-    logCacheEvent(cachedTtl === MOVIE_LONG_CACHE_TTL_SECONDS ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
+  if (cached && cachedEntry && isCacheEntryFresh(cachedEntry.cachedAt, cachedInfo.ttlSeconds)) {
+    logCacheEvent(cachedInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
       namespace: policy.namespace,
       key: url,
-      slug,
-      ttlSeconds: cachedTtl
+      slug: safeSlug,
+      ttlSeconds: cachedInfo.ttlSeconds
     });
-    return cached;
+    return { payload: cached, refreshed: false, ...cachedInfo };
   }
 
   try {
@@ -191,18 +216,22 @@ async function fetchMoviePayload(slug: string): Promise<SourceMoviePayload> {
     }
 
     const data = await res.json() as SourceMoviePayload;
-    const freshTtl = sourceMoviePayloadIsStableFull(data) ? MOVIE_LONG_CACHE_TTL_SECONDS : MOVIE_SHORT_CACHE_TTL_SECONDS;
-    await writeJsonCache(policy.namespace, url, data, url, freshTtl);
-    logCacheEvent(sourceMoviePayloadIsStableFull(data) ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
+    const freshInfo = moviePayloadCacheInfo(data);
+    await writeJsonCache(policy.namespace, url, data, url, freshInfo.ttlSeconds);
+    logCacheEvent(freshInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
       namespace: policy.namespace,
       key: url,
-      slug,
-      ttlSeconds: freshTtl
+      slug: safeSlug,
+      ttlSeconds: freshInfo.ttlSeconds
     });
-    return data;
+    return { payload: data, refreshed: true, ...freshInfo };
   } catch (error) {
     throw error;
   }
+}
+
+async function fetchMoviePayload(slug: string): Promise<SourceMoviePayload> {
+  return (await fetchMoviePayloadWithInfo(slug)).payload;
 }
 
 function cdnMovieFolder(cdn?: string) {
@@ -416,8 +445,7 @@ export async function getHome(): Promise<HomePayload> {
   };
 }
 
-export async function getMovie(slug: string): Promise<MovieDetail> {
-  const payload = await fetchMoviePayload(slug);
+function movieDetailFromPayload(payload: SourceMoviePayload): MovieDetail {
   const movieRaw = payload?.movie || payload?.data?.item || payload?.data?.movie || payload?.data || {};
   const cdn = payload?.APP_DOMAIN_CDN_IMAGE || payload?.data?.APP_DOMAIN_CDN_IMAGE;
   const base = normalizeCard(movieRaw, cdn);
@@ -452,6 +480,36 @@ export async function getMovie(slug: string): Promise<MovieDetail> {
   return movie;
 }
 
+export async function getMovie(slug: string): Promise<MovieDetail> {
+  return movieDetailFromPayload(await fetchMoviePayload(slug));
+}
+
+export async function refreshOphimMovie(slug: string, options: { force?: boolean } = {}) {
+  const safeSlug = validateMovieSlug(slug);
+  const startedAt = Date.now();
+
+  if (options.force) {
+    setCacheBypassRefresh(true);
+  }
+
+  try {
+    const payloadResult = await fetchMoviePayloadWithInfo(safeSlug);
+    const movie = movieDetailFromPayload(payloadResult.payload);
+    const policy = movieDetailCachePolicy(movie);
+    return {
+      slug: safeSlug,
+      refreshed: payloadResult.refreshed,
+      cacheClass: policy.cacheClass,
+      ttlSeconds: policy.ttlSeconds,
+      durationMs: Date.now() - startedAt
+    };
+  } finally {
+    if (options.force) {
+      setCacheBypassRefresh(false);
+    }
+  }
+}
+
 export async function getCategories() {
   const payload = await fetchJson<SourceTaxonomyPayload>(`/the-loai`, 3600);
   return Array.isArray(payload) ? payload : payload?.data || [];
@@ -474,6 +532,7 @@ export async function refreshLatestOphimMovies(options: { maxMovies?: number; de
     listItems: 0,
     detailAttempts: 0,
     detailOk: 0,
+    detailSkippedFresh: 0,
     detailFailed: 0,
     slugs: [] as string[],
     errors: [] as Array<{ slug: string; message: string }>
@@ -488,8 +547,11 @@ export async function refreshLatestOphimMovies(options: { maxMovies?: number; de
     if (index > 0) await sleep(delayMs);
     result.detailAttempts += 1;
     try {
-      await getMovie(slug);
+      const refreshed = await refreshOphimMovie(slug);
       result.detailOk += 1;
+      if (!refreshed.refreshed) {
+        result.detailSkippedFresh += 1;
+      }
     } catch (error) {
       result.detailFailed += 1;
       result.errors.push({
@@ -503,6 +565,7 @@ export async function refreshLatestOphimMovies(options: { maxMovies?: number; de
     listItems: result.listItems,
     detailAttempts: result.detailAttempts,
     detailOk: result.detailOk,
+    detailSkippedFresh: result.detailSkippedFresh,
     detailFailed: result.detailFailed,
     durationMs: Date.now() - startedAt
   });
