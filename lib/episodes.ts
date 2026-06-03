@@ -48,11 +48,6 @@ export function findEpisodeByWatchKey(server?: EpisodeServer, key?: string) {
   const value = cleanText(key);
   if (!value) return server.serverData[0];
 
-  const numericIndex = Number(value);
-  if (Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < server.serverData.length) {
-    return server.serverData[numericIndex];
-  }
-
   const found = server.serverData.find((episode, index) => {
     const candidates = [
       episodeWatchKey(episode, index),
@@ -64,6 +59,11 @@ export function findEpisodeByWatchKey(server?: EpisodeServer, key?: string) {
   });
 
   if (found) return found;
+
+  const numericIndex = Number(value);
+  if (Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < server.serverData.length) {
+    return server.serverData[numericIndex];
+  }
 
   if (isGenericEpisodeLabel(value) && server.serverData.length === 1) {
     return server.serverData[0];
