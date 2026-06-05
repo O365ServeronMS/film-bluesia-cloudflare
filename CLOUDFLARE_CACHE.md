@@ -9,7 +9,7 @@ This deployment uses Cloudflare-native cache storage only.
 - `ADMIN_REFRESH_TOKEN`: secret used by `POST /api/admin/refresh` for protected manual OPhim refreshes.
 - `CACHE_REFRESH_TOKEN`: secret used by `?refresh=1&token=...` to bypass HTML and metadata cache.
 - `HTML_CACHE_VERSION`: version segment added to internal HTML cache keys. Bump this when a deployment should ignore previously cached HTML that may reference old hashed Astro assets.
-- `OPHIM_REFRESH_MAX_MOVIES`: maximum latest movies to detail-refresh per scheduled run. Defaults to `6`.
+- `OPHIM_REFRESH_MAX_MOVIES`: maximum latest movies to detail-refresh per scheduled run. Defaults to `24`.
 - `OPHIM_REFRESH_DELAY_MS`: delay between detail refresh requests. Defaults to `1500`.
 
 The production KV namespace is configured in `wrangler.jsonc`:
@@ -43,7 +43,11 @@ HTML cache keys include `HTML_CACHE_VERSION` internally. This prevents a cached 
 }
 ```
 
-The custom Worker entrypoint in `src/worker.ts` preserves Astro's `fetch` handler and adds `scheduled()`. Each run respects KV freshness, checks page 1 of `phim-moi-cap-nhat`, then refreshes stale or missing detail metadata for up to `OPHIM_REFRESH_MAX_MOVIES` slugs sequentially with `OPHIM_REFRESH_DELAY_MS` between requests. Logs use `OPHIM_REFRESH_START`, `OPHIM_REFRESH_DONE`, `OPHIM_REFRESH_SUCCESS`, and `OPHIM_REFRESH_FAIL`, including `listItems`, `detailAttempts`, `detailOk`, `detailSkippedFresh`, `detailFailed`, and `durationMs`.
+The custom Worker entrypoint in `src/worker.ts` preserves Astro's `fetch` handler and adds `scheduled()`. Each run respects KV freshness, checks page 1 of `phim-moi-cap-nhat`, then refreshes stale or missing detail metadata for up to `OPHIM_REFRESH_MAX_MOVIES` slugs sequentially with `OPHIM_REFRESH_DELAY_MS` between requests. Logs use `OPHIM_REFRESH_START`, `OPHIM_REFRESH_DONE`, `OPHIM_REFRESH_SUCCESS`, and `OPHIM_REFRESH_FAIL`, including `movies_scanned`, `movies_changed`, `kv_writes`, `kv_skipped_unchanged`, `daily_write_count`, `refresh_stopped_by_soft_limit`, `refresh_stopped_by_hard_limit`, `listItems`, `detailAttempts`, `detailOk`, `detailSkippedFresh`, `detailFailed`, and `durationMs`.
+
+Refresh-scoped KV writes compare a stable SHA-256 hash before writing. Movie detail writes hash the normalized movie metadata while storing the cached source payload with the hash in the envelope and KV metadata. Unchanged payloads do not call `KV.put`.
+
+Daily refresh write counts are stored at `kvstats:writes:YYYY-MM-DD`. The soft limit is 750 writes/day and skips non-critical refresh writes. The hard limit is 900 writes/day and stops scheduled/manual refresh writes for the day.
 
 ## Manual OPhim refresh
 

@@ -1,5 +1,12 @@
 import type { APIRoute } from "astro";
-import { OPHIM_REFRESH_MAX_MOVIES, refreshLatestOphimMovies, refreshOphimMovie } from "@/lib/ophim";
+import { beginKvWriteBudget, finishKvWriteBudget } from "@/lib/cache";
+import {
+  DAILY_KV_WRITE_HARD_LIMIT,
+  DAILY_KV_WRITE_SOFT_LIMIT,
+  OPHIM_REFRESH_MAX_MOVIES,
+  refreshLatestOphimMovies,
+  refreshOphimMovie
+} from "@/lib/ophim";
 import { setCacheBypassRefresh, setRuntimeEnv } from "@/lib/runtime-env";
 
 const RATE_LIMIT_KEY = "admin-refresh:rate-limit";
@@ -107,7 +114,23 @@ export const POST: APIRoute = async ({ locals, request }) => {
   try {
     const result = mode === "latest"
       ? await refreshLatestOphimMovies({ maxMovies: OPHIM_REFRESH_MAX_MOVIES })
-      : await refreshOphimMovie(body.slug || "");
+      : await (async () => {
+        await beginKvWriteBudget({
+          softLimit: DAILY_KV_WRITE_SOFT_LIMIT,
+          hardLimit: DAILY_KV_WRITE_HARD_LIMIT
+        });
+
+        try {
+          const movie = await refreshOphimMovie(body.slug || "");
+          const budget = await finishKvWriteBudget();
+          return {
+            ...movie,
+            ...budget
+          };
+        } finally {
+          await finishKvWriteBudget();
+        }
+      })();
 
     return json({
       ok: true,

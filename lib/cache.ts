@@ -52,6 +52,7 @@ type CacheEnv = {
 type JsonEnvelope<T> = {
   cachedAt: string;
   sourceUrl?: string;
+  hash?: string;
   value: T;
 };
 
@@ -65,7 +66,39 @@ export type BinaryCacheHit = {
 export type JsonCacheEntry<T> = {
   value: T;
   cachedAt?: string;
+  hash?: string;
 };
+
+export type KvWriteBudget = {
+  softLimit: number;
+  hardLimit: number;
+};
+
+export type KvWriteBudgetSnapshot = {
+  daily_write_count: number;
+  kv_writes: number;
+  kv_skipped_unchanged: number;
+  refresh_stopped_by_soft_limit: boolean;
+  refresh_stopped_by_hard_limit: boolean;
+};
+
+type KvWriteBudgetState = KvWriteBudget & {
+  key: string;
+  initialCount: number;
+  writes: number;
+  skippedUnchanged: number;
+  stoppedBySoftLimit: boolean;
+  stoppedByHardLimit: boolean;
+  kv?: MinimalKvNamespace;
+};
+
+type WriteJsonCacheOptions = {
+  critical?: boolean;
+  hashValue?: unknown;
+};
+
+let currentKvWriteBudget: KvWriteBudgetState | undefined;
+const lastKvWriteSecond = new Map<string, number>();
 
 function env() {
   return runtimeEnv<CacheEnv>() || {};
@@ -119,6 +152,97 @@ export function isCacheEntryFresh(cachedAt: string | undefined, ttlSeconds: numb
 async function sha256(value: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function stableJson(value: unknown): string {
+  if (value === undefined) return "undefined";
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(",")}]`;
+
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+}
+
+async function stableHash(value: unknown) {
+  return sha256(stableJson(value));
+}
+
+function dailyKvWriteKey(date = new Date()) {
+  return `kvstats:writes:${date.toISOString().slice(0, 10)}`;
+}
+
+function parseDailyWriteCount(raw: string | null) {
+  if (!raw) return 0;
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) return Math.max(0, Math.floor(numeric));
+
+  try {
+    const parsed = JSON.parse(raw) as { count?: unknown };
+    const count = Number(parsed?.count);
+    return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function beginKvWriteBudget(budget: KvWriteBudget) {
+  const kv = metadataKv();
+  const key = dailyKvWriteKey();
+  const initialCount = kv ? parseDailyWriteCount(await kv.get(key)) : 0;
+
+  currentKvWriteBudget = {
+    ...budget,
+    key,
+    initialCount,
+    writes: 0,
+    skippedUnchanged: 0,
+    stoppedBySoftLimit: initialCount >= budget.softLimit,
+    stoppedByHardLimit: initialCount >= budget.hardLimit,
+    kv
+  };
+
+  return getKvWriteBudgetSnapshot();
+}
+
+export function getKvWriteBudgetSnapshot(): KvWriteBudgetSnapshot {
+  const state = currentKvWriteBudget;
+  if (!state) {
+    return {
+      daily_write_count: 0,
+      kv_writes: 0,
+      kv_skipped_unchanged: 0,
+      refresh_stopped_by_soft_limit: false,
+      refresh_stopped_by_hard_limit: false
+    };
+  }
+
+  const dailyCount = state.initialCount + state.writes;
+  return {
+    daily_write_count: dailyCount,
+    kv_writes: state.writes,
+    kv_skipped_unchanged: state.skippedUnchanged,
+    refresh_stopped_by_soft_limit: state.stoppedBySoftLimit,
+    refresh_stopped_by_hard_limit: state.stoppedByHardLimit
+  };
+}
+
+export async function finishKvWriteBudget() {
+  const state = currentKvWriteBudget;
+  if (!state) return getKvWriteBudgetSnapshot();
+
+  const snapshot = getKvWriteBudgetSnapshot();
+  currentKvWriteBudget = undefined;
+
+  if (state.kv && state.writes > 0) {
+    const updatedAt = new Date().toISOString();
+    await state.kv.put(state.key, JSON.stringify({ count: snapshot.daily_write_count, updatedAt }), {
+      expirationTtl: 60 * 60 * 48,
+      metadata: { namespace: "kvstats", updatedAt }
+    });
+  }
+
+  return snapshot;
 }
 
 function keySlugFromUrl(key: string) {
@@ -243,14 +367,14 @@ export async function readJsonCacheEntry<T>(namespace: string, key: string, ttlS
     }
 
     cacheLog("KV_METADATA_HIT", { namespace, key: objectKey, allowExpired });
-    return { value: envelope.value, cachedAt: envelope.cachedAt };
+    return { value: envelope.value, cachedAt: envelope.cachedAt, hash: envelope.hash };
   } catch (error) {
     cacheLog("KV_METADATA_MISS", { namespace, key: objectKey, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
 
-export async function writeJsonCache(namespace: string, key: string, value: unknown, sourceUrl?: string, ttlSeconds = detailCacheTtlSeconds()) {
+export async function writeJsonCache(namespace: string, key: string, value: unknown, sourceUrl?: string, ttlSeconds = detailCacheTtlSeconds(), options: WriteJsonCacheOptions = {}) {
   const kv = metadataKv();
   const objectKey = await metadataKey(namespace, key);
 
@@ -259,18 +383,57 @@ export async function writeJsonCache(namespace: string, key: string, value: unkn
     return { skipped: true };
   }
 
+  const budget = currentKvWriteBudget;
+  const currentDailyCount = budget ? budget.initialCount + budget.writes : 0;
+  if (budget && currentDailyCount >= budget.hardLimit) {
+    budget.stoppedByHardLimit = true;
+    cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, skipped: true, reason: "daily-hard-limit", daily_write_count: currentDailyCount });
+    return { skipped: true, reason: "daily-hard-limit" };
+  }
+
+  if (budget && !options.critical && currentDailyCount >= budget.softLimit) {
+    budget.stoppedBySoftLimit = true;
+    cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, skipped: true, reason: "daily-soft-limit", daily_write_count: currentDailyCount });
+    return { skipped: true, reason: "daily-soft-limit" };
+  }
+
+  const nowSecond = Math.floor(Date.now() / 1000);
+  if (lastKvWriteSecond.get(objectKey) === nowSecond) {
+    cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, skipped: true, reason: "duplicate-key-same-second" });
+    return { skipped: true, reason: "duplicate-key-same-second" };
+  }
+
+  const hash = await stableHash(options.hashValue ?? value);
+  try {
+    const raw = await kv.get(objectKey);
+    if (raw) {
+      const existing = JSON.parse(raw) as JsonEnvelope<unknown>;
+      const existingHash = existing.hash || await stableHash(existing.value);
+      if (existingHash === hash) {
+        if (budget) budget.skippedUnchanged += 1;
+        cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, skipped: true, reason: "unchanged", hash });
+        return { skipped: true, reason: "unchanged", hash };
+      }
+    }
+  } catch {
+    // Corrupt cache entries should be replaced by the fresh normalized payload.
+  }
+
   const envelope: JsonEnvelope<unknown> = {
     cachedAt: new Date().toISOString(),
+    hash,
     sourceUrl,
     value
   };
 
   await kv.put(objectKey, JSON.stringify(envelope), {
     expirationTtl: ttlSeconds,
-    metadata: { namespace, sourceUrl: sourceUrl || "", cachedAt: envelope.cachedAt }
+    metadata: { namespace, sourceUrl: sourceUrl || "", cachedAt: envelope.cachedAt, hash }
   });
-  cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, ttlSeconds });
-  return { skipped: false };
+  lastKvWriteSecond.set(objectKey, nowSecond);
+  if (budget) budget.writes += 1;
+  cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, ttlSeconds, hash });
+  return { skipped: false, hash };
 }
 
 export async function cacheStats() {

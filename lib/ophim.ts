@@ -12,7 +12,19 @@ import type {
   SourceTaxonomyPayload
 } from "@/lib/types";
 import { buildSmartSpotlight, type SpotlightCandidate } from "@/lib/spotlight";
-import { isCacheEntryFresh, listCacheTtlSeconds, logCacheEvent, readJsonCache, readJsonCacheEntry, searchCacheTtlSeconds, taxonomyCacheTtlSeconds, writeJsonCache } from "@/lib/cache";
+import {
+  beginKvWriteBudget,
+  finishKvWriteBudget,
+  getKvWriteBudgetSnapshot,
+  isCacheEntryFresh,
+  listCacheTtlSeconds,
+  logCacheEvent,
+  readJsonCache,
+  readJsonCacheEntry,
+  searchCacheTtlSeconds,
+  taxonomyCacheTtlSeconds,
+  writeJsonCache
+} from "@/lib/cache";
 import { buildVsembedServer } from "@/lib/vsembed";
 import { normalizedEpisodeName, normalizedEpisodeSlug } from "@/lib/episodes";
 import { setCacheBypassRefresh } from "@/lib/runtime-env";
@@ -22,7 +34,11 @@ export const LIST_CACHE_TTL_SECONDS = 1800;
 export const MOVIE_LONG_CACHE_TTL_SECONDS = 7776000;
 export const MOVIE_SHORT_CACHE_TTL_SECONDS = 86400;
 export const SEARCH_CACHE_TTL_SECONDS = 0;
-export const OPHIM_REFRESH_MAX_MOVIES = 6;
+export const REFRESH_BATCH_SIZE = 24;
+export const REFRESH_INTERVAL_MINUTES = 120;
+export const DAILY_KV_WRITE_SOFT_LIMIT = 750;
+export const DAILY_KV_WRITE_HARD_LIMIT = 900;
+export const OPHIM_REFRESH_MAX_MOVIES = REFRESH_BATCH_SIZE;
 export const OPHIM_REFRESH_DELAY_MS = 1500;
 
 const BASE_URL = (process.env.OPHIM_BASE_URL || "https://ophim1.com").replace(/\/$/, "");
@@ -217,14 +233,18 @@ async function fetchMoviePayloadWithInfo(slug: string): Promise<MoviePayloadFetc
 
     const data = await res.json() as SourceMoviePayload;
     const freshInfo = moviePayloadCacheInfo(data);
-    await writeJsonCache(policy.namespace, url, data, url, freshInfo.ttlSeconds);
+    const writeResult = await writeJsonCache(policy.namespace, url, data, url, freshInfo.ttlSeconds, {
+      hashValue: movieDetailFromPayload(data)
+    });
     logCacheEvent(freshInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
       namespace: policy.namespace,
       key: url,
       slug: safeSlug,
-      ttlSeconds: freshInfo.ttlSeconds
+      ttlSeconds: freshInfo.ttlSeconds,
+      skipped: writeResult.skipped,
+      reason: writeResult.reason
     });
-    return { payload: data, refreshed: true, ...freshInfo };
+    return { payload: data, refreshed: !writeResult.skipped, ...freshInfo };
   } catch (error) {
     throw error;
   }
@@ -525,10 +545,22 @@ function sleep(ms: number) {
 }
 
 export async function refreshLatestOphimMovies(options: { maxMovies?: number; delayMs?: number } = {}) {
-  const maxMovies = Math.min(24, Math.max(1, Math.floor(options.maxMovies || OPHIM_REFRESH_MAX_MOVIES)));
+  await beginKvWriteBudget({
+    softLimit: DAILY_KV_WRITE_SOFT_LIMIT,
+    hardLimit: DAILY_KV_WRITE_HARD_LIMIT
+  });
+
+  const maxMovies = Math.min(REFRESH_BATCH_SIZE, Math.max(1, Math.floor(options.maxMovies || OPHIM_REFRESH_MAX_MOVIES)));
   const delayMs = Math.min(5000, Math.max(250, Math.floor(options.delayMs || OPHIM_REFRESH_DELAY_MS)));
   const startedAt = Date.now();
   const result = {
+    movies_scanned: 0,
+    movies_changed: 0,
+    kv_writes: 0,
+    kv_skipped_unchanged: 0,
+    daily_write_count: 0,
+    refresh_stopped_by_soft_limit: false,
+    refresh_stopped_by_hard_limit: false,
     listItems: 0,
     detailAttempts: 0,
     detailOk: 0,
@@ -538,30 +570,52 @@ export async function refreshLatestOphimMovies(options: { maxMovies?: number; de
     errors: [] as Array<{ slug: string; message: string }>
   };
 
-  const latest = await getList("phim-moi-cap-nhat", 1, Math.max(18, maxMovies));
-  const slugs = latest.items.map((movie) => movie.slug).filter(Boolean).slice(0, maxMovies);
-  result.listItems = latest.items.length;
-  result.slugs = slugs;
+  try {
+    let budget = getKvWriteBudgetSnapshot();
+    if (!budget.refresh_stopped_by_hard_limit && !budget.refresh_stopped_by_soft_limit) {
+      const latest = await getList("phim-moi-cap-nhat", 1, Math.max(18, maxMovies));
+      const slugs = latest.items.map((movie) => movie.slug).filter(Boolean).slice(0, maxMovies);
+      result.listItems = latest.items.length;
+      result.slugs = slugs;
 
-  for (const [index, slug] of slugs.entries()) {
-    if (index > 0) await sleep(delayMs);
-    result.detailAttempts += 1;
-    try {
-      const refreshed = await refreshOphimMovie(slug);
-      result.detailOk += 1;
-      if (!refreshed.refreshed) {
-        result.detailSkippedFresh += 1;
+      for (const [index, slug] of slugs.entries()) {
+        budget = getKvWriteBudgetSnapshot();
+        if (budget.refresh_stopped_by_hard_limit || budget.refresh_stopped_by_soft_limit) {
+          break;
+        }
+
+        if (index > 0) await sleep(delayMs);
+        result.detailAttempts += 1;
+        result.movies_scanned += 1;
+        try {
+          const refreshed = await refreshOphimMovie(slug);
+          result.detailOk += 1;
+          if (refreshed.refreshed) {
+            result.movies_changed += 1;
+          } else {
+            result.detailSkippedFresh += 1;
+          }
+        } catch (error) {
+          result.detailFailed += 1;
+          result.errors.push({
+            slug,
+            message: error instanceof Error ? error.message : String(error)
+          });
+        }
       }
-    } catch (error) {
-      result.detailFailed += 1;
-      result.errors.push({
-        slug,
-        message: error instanceof Error ? error.message : String(error)
-      });
     }
+  } finally {
+    Object.assign(result, await finishKvWriteBudget());
   }
 
   logCacheEvent("OPHIM_REFRESH_DONE", {
+    movies_scanned: result.movies_scanned,
+    movies_changed: result.movies_changed,
+    kv_writes: result.kv_writes,
+    kv_skipped_unchanged: result.kv_skipped_unchanged,
+    daily_write_count: result.daily_write_count,
+    refresh_stopped_by_soft_limit: result.refresh_stopped_by_soft_limit,
+    refresh_stopped_by_hard_limit: result.refresh_stopped_by_hard_limit,
     listItems: result.listItems,
     detailAttempts: result.detailAttempts,
     detailOk: result.detailOk,
