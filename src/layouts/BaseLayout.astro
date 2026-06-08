@@ -74,7 +74,57 @@ const isDev = import.meta.env.DEV;
         if (sameOriginReferrer && history.length > 1) {
           event.preventDefault();
           history.back();
+          return;
         }
+
+        const target = new URL(link.href, window.location.href);
+        const source = currentNavSource();
+        if (source && !navSourceFromHash(target.hash) && (target.pathname.startsWith("/movie/") || target.pathname.startsWith("/watch/"))) {
+          target.hash = new URLSearchParams({ from: source }).toString();
+          link.href = target.toString();
+        }
+      }, true);
+
+      const navSourceKeys = new Set(["home", "phim-le", "phim-bo", "tv-shows", "hoat-hinh"]);
+
+      function validNavSource(value) {
+        const key = String(value || "").trim();
+        return navSourceKeys.has(key) ? key : "";
+      }
+
+      function navSourceFromPath(pathname) {
+        if (pathname === "/") return "home";
+        if (pathname.startsWith("/list/phim-le")) return "phim-le";
+        if (pathname.startsWith("/list/phim-bo")) return "phim-bo";
+        if (pathname.startsWith("/list/tv-shows")) return "tv-shows";
+        if (pathname.startsWith("/list/hoat-hinh")) return "hoat-hinh";
+        return "";
+      }
+
+      function navSourceFromHash(hash) {
+        const clean = String(hash || "").replace(/^#/, "");
+        if (!clean) return "";
+        return validNavSource(new URLSearchParams(clean).get("from"));
+      }
+
+      function currentNavSource() {
+        return navSourceFromHash(window.location.hash) || navSourceFromPath(window.location.pathname);
+      }
+
+      document.addEventListener("click", (event) => {
+        const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+        if (!(link instanceof HTMLAnchorElement) || link.hasAttribute("data-nav-back")) return;
+
+        const target = new URL(link.href, window.location.href);
+        if (target.origin !== window.location.origin) return;
+        if (!target.pathname.startsWith("/movie/") && !target.pathname.startsWith("/watch/")) return;
+        if (navSourceFromHash(target.hash)) return;
+
+        const source = currentNavSource();
+        if (!source) return;
+
+        target.hash = new URLSearchParams({ from: source }).toString();
+        link.href = target.toString();
       }, true);
     </script>
     {isDev && (

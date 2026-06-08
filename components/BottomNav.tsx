@@ -14,10 +14,16 @@ const items = [
 ];
 
 const CONTEXT_KEY = "film.bluesia.net:last-nav-section";
+const SOURCE_KEYS = new Set(["home", "phim-le", "phim-bo", "tv-shows", "hoat-hinh"]);
 
 function normalizePath(pathname: string) {
   if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
   return pathname || "/";
+}
+
+function validSourceKey(value?: string | null) {
+  const key = String(value || "").trim();
+  return SOURCE_KEYS.has(key) ? key : "";
 }
 
 function activeKeyFromPath(pathname: string, contextKey = "") {
@@ -35,13 +41,19 @@ function activeKeyFromPath(pathname: string, contextKey = "") {
 
 function contextFromPath(pathname: string) {
   const key = activeKeyFromPath(pathname);
-  return key && !["home", "search", "settings"].includes(key) ? key : "";
+  return key && !["search", "settings"].includes(key) ? key : "";
+}
+
+function sourceFromHash(hash?: string) {
+  const clean = String(hash || "").replace(/^#/, "");
+  if (!clean) return "";
+  return validSourceKey(new URLSearchParams(clean).get("from"));
 }
 
 function readContext() {
   if (typeof window === "undefined") return "";
   try {
-    return sessionStorage.getItem(CONTEXT_KEY) || "";
+    return validSourceKey(sessionStorage.getItem(CONTEXT_KEY));
   } catch {
     return "";
   }
@@ -66,19 +78,22 @@ function isContextualPath(pathname: string) {
   return path.startsWith("/movie/") || path.startsWith("/watch/");
 }
 
-function contextKeyForPath(pathname: string) {
+function contextKeyForPath(pathname: string, hash = "") {
+  const source = sourceFromHash(hash);
+  if (source) return source;
   const key = contextFromPath(pathname);
   if (key) return key;
-  return isContextualPath(pathname) ? readContext() : "";
+  return isContextualPath(pathname) ? "" : readContext();
 }
 
 export function BottomNav({ initialPathname = "/" }: { initialPathname?: string }) {
   const currentPathname = typeof window === "undefined" ? initialPathname : window.location.pathname;
+  const currentHash = typeof window === "undefined" ? "" : window.location.hash;
   const [pathname, setPathname] = useState(() =>
     currentPathname
   );
   const [contextKey, setContextKey] = useState(() =>
-    contextKeyForPath(currentPathname)
+    contextKeyForPath(currentPathname, currentHash)
   );
   const activeKey = useMemo(() => activeKeyFromPath(pathname, contextKey), [pathname, contextKey]);
 
@@ -86,7 +101,7 @@ export function BottomNav({ initialPathname = "/" }: { initialPathname?: string 
     function syncPath(eventName: string) {
       const nextPathname = window.location.pathname;
       writeContext(nextPathname);
-      const nextContextKey = contextKeyForPath(nextPathname);
+      const nextContextKey = contextKeyForPath(nextPathname, window.location.hash);
       setPathname(nextPathname);
       setContextKey(nextContextKey);
       devLog("NAV_ROUTE_CHANGE", { event: eventName, pathname: nextPathname });
@@ -104,16 +119,22 @@ export function BottomNav({ initialPathname = "/" }: { initialPathname?: string 
       syncPath("popstate");
     }
 
+    function handleHashChange() {
+      syncPath("hashchange");
+    }
+
     function handlePageShow(event: PageTransitionEvent) {
       syncPath(event.persisted ? "pageshow-persisted" : "pageshow");
     }
 
     window.addEventListener("astro:page-load", handlePageLoad);
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", handleHashChange);
     window.addEventListener("pageshow", handlePageShow);
     return () => {
       window.removeEventListener("astro:page-load", handlePageLoad);
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("pageshow", handlePageShow);
     };
   }, []);

@@ -53,6 +53,15 @@
 - Do not use `history.go(-N)`, `setTimeout`, or stack-skipping hacks.
 - Manual check when episode navigation changes: open a series detail, click `Xem phim`, select Episode 3, Episode 5, then Episode 6, press browser Back once, and verify the current page is Detail rather than Episode 5 or Episode 3. Press Back again and verify the original category/list page is restored.
 
+## Bottom Nav Source Tab Must Persist Across Child Pages
+
+- Detail and Watch/Episode pages are child pages of the source tab/category.
+- Opening Detail from a bottom-nav tab must keep that tab active on Detail and Watch.
+- Active tab must not be derived only from the current pathname because `/movie/...` and `/watch/...` are child routes.
+- Do not default detail/watch pages to `Trang chủ` when source context is unknown; unknown direct child URLs should have no forced source tab.
+- Preserve source context through Detail -> Watch, Watch/Episode episode replacements, and browser Back navigation.
+- Manual check when bottom-nav context changes: open `Trang chủ`, `Phim lẻ`, `Phim bộ`, `TV Show`, and `Hoạt hình`; from each, open Detail and then `Xem phim`, and verify the same source tab remains active on both child pages.
+
 ## Player
 
 - Direct HLS playback uses `HlsVideo.tsx` with dynamic imports for Artplayer and hls.js.
