@@ -14,8 +14,8 @@
 - `src/pages/index.astro`: home page; `getHome()`, hero preload, `TopBar`, `HeroSlider`, `SectionRow`.
 - `src/pages/list/[type].astro`: category/list pages; filters, pagination, `MovieCard` grid.
 - `src/pages/search.astro`: search page; `SearchSuggest`, `searchMovies()`, `MovieCard` grid.
-- `src/pages/movie/[slug].astro`: movie detail page; detail metadata, poster, rating, actions, episode list.
-- `src/pages/watch/[slug].astro`: watch page; episode/server selection, HLS vs embed player, history recorder.
+- `src/pages/movie/[slug].astro`: movie detail page; detail metadata, poster, rating, `Xem phim` detail-to-watch link, episode list links, `data-nav-back` detail up-control fallback to `/`.
+- `src/pages/watch/[slug].astro`: watch page; episode/server selection, HLS vs embed player, history recorder, `data-nav-back` watch up-control fallback to `/movie/[slug]`.
 - `src/pages/favorites.astro`: local favorites page.
 - `src/pages/history.astro`: local history page.
 - `src/pages/settings.astro`: settings/info page.
@@ -79,7 +79,8 @@
 - Movie cards / poster UI: `rg -n "MovieCard|poster|episodeCurrent|quality|Heart|Star" components src lib`.
 - Rating badges: `rg -n "rating|IMDb|TMDB|getDisplayRating|getDisplayRatings|Star" components lib src`.
 - Navigation: `rg -n "BottomNav|TopBar|nav|CONTEXT_KEY|data-nav-back|pageshow|popstate|pathname|SearchSuggest" components src`.
-- Category back/active-tab regressions: check `components/BottomNav.tsx`, `src/layouts/BaseLayout.astro`, `components/MovieCard.tsx`, `src/pages/list/[type].astro`, and `src/pages/movie/[slug].astro` before scanning elsewhere.
+- Category back/active-tab regressions: check `components/BottomNav.tsx`, `src/layouts/BaseLayout.astro`, `components/MovieCard.tsx`, `src/pages/list/[type].astro`, `src/pages/movie/[slug].astro`, and `src/pages/watch/[slug].astro` before scanning elsewhere.
+- Detail/watch hierarchy loops: `rg -n "Xem phim|data-nav-back|/watch/|/movie/|history.back|popstate|pageshow" src components`.
 - Video player / HLS: `rg -n "HlsVideo|Artplayer|hls.js|m3u8|IframePlayerFacade|vsembed" components src lib`.
 - Cloudflare Worker/Pages logic: `rg -n "worker|scheduled|createExports|cloudflare|wrangler|adapter|caches.default" src lib astro.config.mjs wrangler.jsonc`.
 - KV/R2/D1/cache logic: `rg -n "KV|MOVIE_METADATA|IMAGE_CACHE|R2|D1|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib CLOUDFLARE_CACHE.md wrangler.jsonc`.

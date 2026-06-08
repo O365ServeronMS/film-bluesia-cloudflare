@@ -69,7 +69,7 @@ if (playerEmbed || m3u8) {
   <article class="min-h-screen bg-black">
     <WatchRecorder client:load movie={movie} />
     <header class="watch-header sticky top-0 z-40 flex items-center gap-3 border-b border-white/10 bg-black/90 px-3 py-2 backdrop-blur-xl">
-      <a href={`/movie/${movie.slug}`} aria-label={`Quay lại ${movie.name}`} class="watch-header-action grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white">
+      <a href={`/movie/${movie.slug}`} data-nav-back aria-label={`Quay lại ${movie.name}`} class="watch-header-action grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white">
         <ArrowLeft className="h-5 w-5" />
       </a>
       <div class="watch-header-content min-w-0 flex-1">

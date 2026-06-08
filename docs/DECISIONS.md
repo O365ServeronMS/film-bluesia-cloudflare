@@ -33,12 +33,16 @@
 - Keep favorite/heart, Full/episode, and quality badge positions stable when changing poster overlay content unless the task explicitly changes them.
 - Existing UI uses Tailwind classes and lucide-react icons; reuse those patterns.
 
-## Navigation
+## Navigation Hierarchy And Browser Back Behavior
 
+- Category/List -> Detail -> Episode/Watch is the canonical hierarchy.
+- Browser Back must move one hierarchy level up and must never loop Detail <-> Episode/Watch.
 - Browser Back from a movie detail page must return to the exact previous category/tab page, including `/list/phim-le`, `/list/phim-bo`, `/list/tv-shows`, and `/list/hoat-hinh` states.
-- Do not reset category state to `Trang chủ` during hydration, `pageshow` history restoration, `popstate`, or route restoration.
-- Do not use replace navigation for category-to-detail transitions unless explicitly requested; movie card links should remain normal anchors that preserve browser history.
-- Manual check when navigation code changes: open `Phim lẻ`, click a poster, press browser Back, and verify the URL and active bottom tab return to `Phim lẻ` without a home-tab flash. Repeat for `Phim bộ`, `TV Show`, and `Hoạt hình` if the change touches route derivation.
+- Detail pages must not auto-reopen Episode Selection/Watch on hydration, `pageshow`, `popstate`, or route restoration.
+- Normal category-to-detail and detail-to-watch user navigation should remain normal anchors that preserve browser history; do not use `replaceState` in a way that destroys the previous category/list entry.
+- Active bottom tab/category must be derived from URL/history and must not reset to `Trang chủ` by default during hydration or route restoration.
+- In-page up/back controls from detail or watch may use `data-nav-back` with URL fallbacks so direct-opened detail/watch URLs still work.
+- Manual check when navigation code changes: open `Phim lẻ`, click a poster, click `Xem phim`, press browser Back to return to Detail, then press browser Back again and verify the URL and active bottom tab return to `Phim lẻ` without a Detail <-> Watch loop or home-tab flash. Repeat for `Trang chủ`, `Phim bộ`, `TV Show`, and `Hoạt hình` if the change touches route derivation.
 
 ## Player
 

@@ -100,6 +100,15 @@
 - `VSEMBED_MOBILE_EMBED_HOST` can switch mobile embed host among an allowlist.
 - `lib/vsembed.ts` constructs VSEmbed movie/episode URLs from TMDB/IMDb IDs when available.
 
+## Navigation Notes
+
+- Canonical user hierarchy is Category/List -> Detail -> Episode/Watch.
+- Category/list state is URL-addressable through `/list/[type]` plus query params; bottom active state is derived from pathname in `components/BottomNav.tsx`.
+- Detail pages live at `/movie/[slug]`; watch pages live at `/watch/[slug]` with episode/server query state.
+- Movie cards and the `Xem phim` button use normal anchors so browser history keeps the previous hierarchy entry.
+- `src/layouts/BaseLayout.astro` owns the same-origin `data-nav-back` handler for up-controls with URL fallbacks on direct-opened pages.
+- Anti-regression rule: Browser Back must move Episode/Watch -> Detail -> previous Category/List without Detail <-> Watch loops and without resetting the active tab to `Trang chủ` unless home was the real previous page.
+
 ## SEO And Static Assets
 
 - `BaseLayout.astro` sets canonical, Open Graph, Twitter, manifest, icons, and locale metadata.
@@ -115,4 +124,3 @@
 - Preserve the mobile-first app shell and bottom navigation behavior.
 - Existing UI text appears Vietnamese; avoid changing copy unless requested.
 - Need verification: some inspected Vietnamese strings display mojibake in terminal output; confirm source encoding/rendering before editing user-visible text broadly.
-
