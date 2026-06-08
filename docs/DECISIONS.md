@@ -64,9 +64,17 @@
 
 ## Player
 
-- Direct HLS playback uses `HlsVideo.tsx` with dynamic imports for Artplayer and hls.js.
+- Direct OPhim HLS playback uses `HlsVideo.tsx` with native HTML5 video and dynamic hls.js fallback.
 - Embed playback uses `IframePlayerFacade.tsx`; watch-page selection logic is in `src/pages/watch/[slug].astro`.
 - Preserve mobile/embed fallback behavior unless the task targets player selection.
+
+## Vidsrc Playback Must Remain Isolated From OPhim Player Changes
+
+- OPhim playback may use native video plus hls.js fallback for direct m3u8 streams.
+- Vidsrc playback/API/embed flow must not be modified unless explicitly requested.
+- Do not remove dependencies used by Vidsrc.
+- Do not route Vidsrc through the OPhim HLS player.
+- Any future player optimization must check source/provider separation first.
 
 ## SEO And Public Files
 

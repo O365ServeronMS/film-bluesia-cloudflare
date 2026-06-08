@@ -15,7 +15,6 @@
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "artplayer": "^5.4.0",
     "astro": "^5.15.9",
     "autoprefixer": "^10.5.0",
     "clsx": "^2.1.1",
