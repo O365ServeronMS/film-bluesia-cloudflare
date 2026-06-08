@@ -33,10 +33,12 @@ export function navSourceFromHash(hash?: string | null) {
 }
 
 export function hrefWithNavSource(href: string, source?: string | null) {
-  const key = validNavSourceKey(source);
-  if (!key) return href;
   const url = new URL(href, "https://film.bluesia.net");
+  const legacyHashKey = navSourceFromHash(url.hash);
+  const key = validNavSourceKey(source) || legacyHashKey;
+  if (!key) return href;
   url.searchParams.set("from", key);
+  if (legacyHashKey) url.hash = "";
   return `${url.pathname}${url.search}${url.hash}`;
 }
 

@@ -120,7 +120,7 @@ const isDev = import.meta.env.DEV;
       }
 
       function currentNavSource() {
-        return navSourceFromSearch(window.location.search) || navSourceFromHash(window.location.hash) || navSourceFromPath(window.location.pathname);
+        return navSourceFromSearch(window.location.search) || navSourceFromPath(window.location.pathname) || navSourceFromHash(window.location.hash);
       }
 
       document.addEventListener("click", (event) => {

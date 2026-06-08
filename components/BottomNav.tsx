@@ -52,11 +52,12 @@ function isContextualPath(pathname: string) {
 function contextKeyForLocation(pathname: string, search = "", hash = "", fallbackKey = "") {
   const querySource = navSourceFromSearchParams(search);
   if (querySource) return querySource;
-  const legacyHashSource = navSourceFromHash(hash);
-  if (legacyHashSource) return legacyHashSource;
   const key = contextFromPath(pathname);
   if (key) return key;
-  return isContextualPath(pathname) ? fallbackKey : readContext();
+  if (isContextualPath(pathname) && fallbackKey) return fallbackKey;
+  const storedKey = readContext();
+  if (storedKey) return storedKey;
+  return navSourceFromHash(hash);
 }
 
 export function BottomNav({
