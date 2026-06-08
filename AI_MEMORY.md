@@ -14,6 +14,7 @@
 - Cloudflare route targets the public site domain.
 - Cron trigger runs every 2 hours and calls the Worker `scheduled()` handler.
 - `src/worker.ts` preserves Astro `fetch` and adds scheduled OPhim refresh behavior.
+- Current app data bindings are `IMAGE_CACHE` and `KV`; required static assets binding is `ASSETS`; active image cache prefix remains `cf-img-jun-2026`.
 - Need verification: exact Cloudflare product mode in production, because the repo uses both Worker main/assets and Astro Cloudflare adapter terminology.
 
 ## Important Commands

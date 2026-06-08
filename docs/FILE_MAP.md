@@ -4,7 +4,7 @@
 
 - `package.json`: scripts, dependencies, browser targets. Build command is `npm run build`.
 - `astro.config.mjs`: Astro server output, Cloudflare adapter, React integration, Vite aliases/cache dir.
-- `wrangler.jsonc`: Cloudflare Worker/assets entry, compatibility flags, route, cron, KV/R2 bindings, public vars.
+- `wrangler.jsonc`: Cloudflare Worker/assets entry, compatibility flags, route, cron, KV/R2 bindings, public vars. Controls Cloudflare bindings: `IMAGE_CACHE` is the R2 image cache binding, `KV` is the metadata KV binding, and `assets.binding = "ASSETS"` is required for static CSS/JS assets.
 - `tsconfig.json`: strict TypeScript, JSX, path alias, generated-folder excludes.
 - `postcss.config.mjs`: Tailwind/PostCSS setup.
 - `CLOUDFLARE_CACHE.md`: operational cache documentation and binding expectations.

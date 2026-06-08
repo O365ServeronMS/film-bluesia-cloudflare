@@ -6,6 +6,9 @@
 - Keep Worker/edge compatibility. Avoid Node-only APIs unless they are already supported by configured compatibility and tested by build/preview.
 - Do not introduce filesystem runtime persistence; use Cloudflare KV/R2/Cache API or browser storage according to existing patterns.
 - Preserve `src/worker.ts` as the custom Worker entrypoint that forwards Astro fetch and owns scheduled refresh behavior.
+- Cloudflare bindings have separate roles: `IMAGE_CACHE` and `KV` are app data bindings and must remain unchanged unless explicitly requested.
+- `ASSETS` is the static assets binding required by the Astro Worker fallback through `env.ASSETS.fetch()`.
+- Do not confuse R2/KV bindings with `assets.binding`; missing `ASSETS` can cause `/_astro/*.css` or `/_astro/*.js` requests to fail with Worker Exception 1101.
 
 ## Caching
 
