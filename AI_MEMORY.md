@@ -1,0 +1,118 @@
+# AI Memory
+
+## Repo Snapshot
+
+- Astro server app with React islands and Tailwind CSS.
+- Cloudflare adapter is configured in `astro.config.mjs` with `output: "server"` and custom Worker entrypoint `src/worker.ts`.
+- Vite alias maps `@/*` to repo root and `react-dom/server` to `react-dom/server.edge`.
+- TypeScript is strict, uses `moduleResolution: "bundler"`, and includes Astro, TS, and TSX files.
+
+## Runtime And Deployment
+
+- `wrangler.jsonc` points the Worker main to `dist/_worker.js/index.js` and assets to `./dist`.
+- Cloudflare compatibility date is set in `wrangler.jsonc`; `nodejs_compat` is enabled.
+- Cloudflare route targets the public site domain.
+- Cron trigger runs every 2 hours and calls the Worker `scheduled()` handler.
+- `src/worker.ts` preserves Astro `fetch` and adds scheduled OPhim refresh behavior.
+- Need verification: exact Cloudflare product mode in production, because the repo uses both Worker main/assets and Astro Cloudflare adapter terminology.
+
+## Important Commands
+
+- `npm run dev`: local Astro dev server.
+- `npm run build`: Astro build.
+- `npm run preview`: builds then runs `wrangler dev dist/_worker.js/index.js --assets dist`.
+- `npm run deploy`: builds then deploys via Wrangler.
+- No lint or test scripts are currently defined in `package.json`.
+
+## Architecture
+
+- `src/pages/` contains Astro route pages and API endpoints.
+- `src/layouts/BaseLayout.astro` owns metadata, app shell, global poster-image fallback script, and bottom nav island.
+- `components/` contains React islands and reusable UI components.
+- `lib/ophim.ts` is the main OPhim metadata client/normalizer and cache policy coordinator.
+- `lib/cache.ts` abstracts Cloudflare KV/R2/cache helpers, TTLs, write budgets, hashes, and cache stats.
+- `lib/types.ts` defines shared movie, episode, payload, source, and API types.
+- `lib/utils.ts` contains class merging, image proxy helpers, rating display helpers, and small text utilities.
+- `src/styles/globals.css` carries global Tailwind/CSS behavior.
+
+## Pages And User Flows
+
+- `/` loads `getHome()` and renders `TopBar`, `HeroSlider`, and `SectionRow` grids.
+- `/list/[type]` loads `getList()` for list categories such as `phim-le`, `phim-bo`, `tv-shows`, and `hoat-hinh`.
+- `/search` calls `searchMovies()` and renders `MovieCard` results.
+- `/movie/[slug]` loads details via `getMovie()`, computes cache class, renders poster/details/actions/episodes.
+- `/watch/[slug]` selects episode/server, prefers HLS unless mobile/embed conditions choose iframe, and records history.
+- `/favorites` and `/history` render client-side stored movies from localStorage through `StoredMovieGrid`.
+- `/settings` describes cache/proxy settings for users.
+
+## Components
+
+- `MovieCard.tsx`: shared poster card for home rows, lists, search, favorites, and history.
+- `SectionRow.tsx`: home grid sections that wrap `MovieCard`.
+- `HeroSlider.tsx`: Smart Spotlight carousel, ranked by `lib/spotlight.ts` plus localStorage preferences.
+- `TopBar.tsx`: sticky search/favorites/history/settings header.
+- `BottomNav.tsx`: six-item mobile bottom nav with sessionStorage context for movie/watch routes.
+- `SearchSuggest.tsx`: search input/suggestions.
+- `LocalMovieActions.tsx`: favorites/history localStorage store and action buttons.
+- `StoredMovieGrid.tsx`: localStorage-backed favorites/history grid.
+- `HlsVideo.tsx`: Artplayer + hls.js player for direct m3u8 streams.
+- `IframePlayerFacade.tsx`: iframe player facade for embed playback.
+- `WatchRecorder.tsx`: records watched movie history.
+
+## Data And Cache Assumptions
+
+- OPhim base URL defaults to `https://ophim1.com` unless `OPHIM_BASE_URL` is set.
+- OPhim image CDN fallback roots are in `lib/ophim.ts` and `src/pages/api/image.ts`.
+- List/home/taxonomy metadata TTL is 1800 seconds.
+- Search metadata TTL is 0/no-store.
+- Movie detail metadata has long/short TTL based on completed/full status and playable links.
+- Image cache TTL is 15 days.
+- HTML cache is handled in `src/middleware.ts` with Cache API and a `HTML_CACHE_VERSION` query segment in the internal cache key.
+- Private HTML pages include favorites, history, settings, watch pages, and search.
+- Movie pages set `X-Film-Bluesia-Movie-Cache-Class`; middleware converts that to long/short HTML TTLs.
+- Cache refresh bypass uses `?refresh=1&token=...` and a secret-backed token check.
+- `lib/cache.ts` uses `MOVIE_METADATA` if available, otherwise `KV`.
+- R2 image storage uses binding name `IMAGE_CACHE`.
+- KV write budget uses daily keys shaped like `kvstats:writes:YYYY-MM-DD`.
+- Refresh writes compare stable hashes before writing.
+
+## Storage And State
+
+- Runtime metadata cache is Cloudflare KV-compatible storage.
+- Runtime image cache is Cloudflare R2 plus edge Cache API.
+- HTML cache is Cloudflare Cache API.
+- Favorites, history, navigation context, and HLS quality preference are browser storage only.
+- No durable server filesystem storage should be introduced.
+
+## OPhim Implementation Notes
+
+- `normalizeCard()` maps source movie payloads to `MovieCard`.
+- `movieDetailFromPayload()` builds `MovieDetail`, episode server data, labels, and optional VSEmbed fallback server.
+- `getHome()` fetches latest, single, series, animation, TV, cinema, and filtered list sections, then builds Smart Spotlight candidates.
+- `getList()` supports quick country/category filters for selected list types.
+- `searchMovies()` uses the OPhim search API and does not store search results in metadata cache when TTL is 0.
+- `displayEpisodeServerName()` maps server names beginning with `vietsub` to `OPhim`.
+
+## Video Notes
+
+- Watch pages can use either direct HLS (`HlsVideo`) or embed iframe (`IframePlayerFacade`).
+- Mobile user agents default toward embed if an embed URL exists unless `player=hls` is requested.
+- `VSEMBED_MOBILE_EMBED_HOST` can switch mobile embed host among an allowlist.
+- `lib/vsembed.ts` constructs VSEmbed movie/episode URLs from TMDB/IMDb IDs when available.
+
+## SEO And Static Assets
+
+- `BaseLayout.astro` sets canonical, Open Graph, Twitter, manifest, icons, and locale metadata.
+- `public/robots.txt`, `public/sitemap.xml`, `public/sitemap-index.xml`, and `public/_headers` exist.
+- `public/manifest.webmanifest` and icon assets exist.
+- Need verification: sitemap generation/update workflow is not evident from inspected files.
+
+## Known Constraints
+
+- Avoid scanning generated folders: `node_modules`, `dist`, `.astro`, `.wrangler`, `.vite-cache-build`, `.verify-deps`.
+- Keep code Cloudflare-compatible and Edge-friendly.
+- Do not change cache key versioning or TTLs without an explicit cache task.
+- Preserve the mobile-first app shell and bottom navigation behavior.
+- Existing UI text appears Vietnamese; avoid changing copy unless requested.
+- Need verification: some inspected Vietnamese strings display mojibake in terminal output; confirm source encoding/rendering before editing user-visible text broadly.
+

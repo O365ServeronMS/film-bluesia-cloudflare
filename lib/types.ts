@@ -15,6 +15,8 @@ export type MovieCard = {
   tmdbRating?: number;
   tmdb?: { id?: number | string; vote_average?: number; vote_count?: number };
   imdb?: { id?: string; rating?: number; vote_count?: number };
+  rating?: { imdb?: number | string; tmdb?: number | string } | number | string;
+  ratings?: { imdb?: number | string; tmdb?: number | string };
   country?: string;
   category?: string;
 };
@@ -98,10 +100,16 @@ export type SourceMovie = {
   duration?: string;
   tmdb?: SourceRating;
   tmdb_rating?: SourceRating;
+  tmdbRating?: number | string;
+  tmdb_vote_average?: number | string;
+  vote_average?: number | string;
   rating?: SourceRating | number | string;
+  ratings?: { imdb?: number | string; tmdb?: number | string };
   tmdb_id?: number | string;
   imdb?: SourceRating;
   imdb_rating?: SourceRating | number | string;
+  imdbRating?: number | string;
+  imdb_score?: number | string;
   category?: SourceLabel[] | string;
   country?: SourceLabel[] | string;
   content?: string;

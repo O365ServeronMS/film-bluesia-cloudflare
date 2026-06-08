@@ -301,6 +301,16 @@ function sourceRating(value?: SourceRating | number | string) {
   return {};
 }
 
+function sourceRatingValue(...values: Array<number | string | undefined>) {
+  for (const value of values) {
+    if (value === undefined) continue;
+    if (typeof value === "string" && (!value.trim() || value.trim().toLowerCase() === "n/a")) continue;
+    const rating = Number(value);
+    if (Number.isFinite(rating) && rating > 0) return rating;
+  }
+  return undefined;
+}
+
 function labelText(value?: SourceLabel[] | string) {
   return Array.isArray(value) ? value.map((label) => label.name).filter(Boolean).join(", ") : value;
 }
@@ -319,8 +329,26 @@ function visibleListCards(items: MovieCard[]) {
 export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
   const tmdb = sourceRating(raw?.tmdb || raw?.tmdb_rating || raw?.rating);
   const imdb = sourceRating(raw?.imdb || raw?.imdb_rating);
-  const tmdbRating = Number(tmdb?.vote_average || tmdb?.rating || 0) || undefined;
-  const imdbRating = Number(imdb?.rating || imdb?.vote_average || 0) || undefined;
+  const ratingObject = typeof raw?.rating === "object" && raw.rating !== null ? raw.rating : undefined;
+  const tmdbRating = sourceRatingValue(
+    raw?.tmdbRating,
+    raw?.tmdb_rating as number | string | undefined,
+    raw?.tmdb_vote_average,
+    raw?.vote_average,
+    tmdb?.vote_average,
+    tmdb?.rating,
+    ratingObject?.tmdb,
+    raw?.ratings?.tmdb
+  );
+  const imdbRating = sourceRatingValue(
+    raw?.imdbRating,
+    raw?.imdb_rating as number | string | undefined,
+    raw?.imdb_score,
+    imdb?.rating,
+    imdb?.vote_average,
+    ratingObject?.imdb,
+    raw?.ratings?.imdb
+  );
   const categoryName = labelText(raw?.category);
   const countryName = labelText(raw?.country);
 
