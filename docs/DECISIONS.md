@@ -15,6 +15,9 @@
 - Search, watch, favorites, history, and settings should remain no-store/private HTML unless a task explicitly changes that.
 - Image cache objects use fixed profiles and WebP output; do not add arbitrary width/quality cache variants without a cache design change.
 - Refresh writes should preserve stable-hash deduplication and daily KV write-budget behavior.
+- Current active image cache namespace is `cf-img-jun-2026`.
+- Do not change image cache namespace/prefix without explicit owner approval.
+- Do not delete old R2 cache prefixes during code changes; keep them for rollback unless explicitly requested.
 
 ## Data
 

@@ -22,7 +22,7 @@
 
 ## API Routes
 
-- `src/pages/api/image.ts`: image proxy/optimizer; Cloudflare Image Resizing style fetch, edge cache, R2 cache, WebP profiles.
+- `src/pages/api/image.ts`: image proxy/optimizer; handles image cache prefix (`IMAGE_CACHE_PREFIX`) and key generation (`cacheKey`), proxying, and caching via Cloudflare Image Resizing, edge cache, and R2 (using helpers in `lib/cache.ts`).
 - `src/pages/api/admin/refresh.ts`: protected manual OPhim refresh endpoint and KV rate/write-budget logic.
 - `src/pages/api/cache/status.ts`: cache status/prune endpoint wrapper.
 - `src/pages/api/ophim/home.ts`: home metadata API.

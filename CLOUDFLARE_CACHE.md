@@ -80,7 +80,7 @@ The image proxy writes only fixed WebP profiles to R2. Width, quality, format, a
 R2 key format:
 
 ```text
-cf-img-v3/{profile}/{hash-of-normalized-original-url}.webp
+cf-img-jun-2026/{profile}/{hash-of-normalized-original-url}.webp
 ```
 
 Allowed profiles:

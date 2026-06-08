@@ -79,7 +79,7 @@
 ## Storage And State
 
 - Runtime metadata cache is Cloudflare KV-compatible storage.
-- Runtime image cache is Cloudflare R2 plus edge Cache API.
+- Runtime image cache is Cloudflare R2 plus edge Cache API. R2 bucket: `film-bluesia-cache` (binding: `IMAGE_CACHE`). Old prefix: `cf-img-v3` (kept for rollback). Active prefix: `cf-img-jun-2026`.
 - HTML cache is Cloudflare Cache API.
 - Favorites, history, navigation context, and HLS quality preference are browser storage only.
 - No durable server filesystem storage should be introduced.
