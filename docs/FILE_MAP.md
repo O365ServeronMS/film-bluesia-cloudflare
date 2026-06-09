@@ -7,7 +7,7 @@
 - `wrangler.jsonc`: Cloudflare Worker/assets entry, compatibility flags, route, cron, KV/R2 bindings, public vars. Controls Cloudflare bindings: `IMAGE_CACHE` is the R2 image cache binding, `KV` is the metadata KV binding, and `assets.binding = "ASSETS"` is required for static CSS/JS assets.
 - `tsconfig.json`: strict TypeScript, JSX, path alias, generated-folder excludes.
 - `postcss.config.mjs`: Tailwind/PostCSS setup.
-- `CLOUDFLARE_CACHE.md`: operational cache documentation and binding expectations.
+- `docs/CLOUDFLARE_CACHE.md`: operational cache documentation and binding expectations.
 - `docs/video-buffering-policy.md`: HLS playback buffering policy; documents client-side buffer/retry optimization and the rule against Worker-side video proxying or chunking.
 - `docs/navigation-active-state.md`: bottom-nav active-state policy for pathname, `?from=...` query context, movie metadata fallback, and legacy hash fallback.
 
@@ -96,6 +96,6 @@
 - Video player / HLS: `rg -n "HlsVideo|hls.js|m3u8|IframePlayerFacade|vsembed|Vidsrc" components src lib`.
 - Video buffering policy: `docs/video-buffering-policy.md` and the Player section in `docs/DECISIONS.md`.
 - Cloudflare Worker/Pages logic: `rg -n "worker|scheduled|createExports|cloudflare|wrangler|adapter|caches.default" src lib astro.config.mjs wrangler.jsonc`.
-- KV/R2/D1/cache logic: `rg -n "KV|MOVIE_METADATA|IMAGE_CACHE|R2|D1|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib CLOUDFLARE_CACHE.md wrangler.jsonc`.
+- KV/R2/D1/cache logic: `rg -n "KV|MOVIE_METADATA|IMAGE_CACHE|R2|D1|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib docs/CLOUDFLARE_CACHE.md wrangler.jsonc`.
 - SEO / robots / sitemap: `rg -n "canonical|og:|twitter|robots|sitemap|manifest|_headers" src public`.
 - OPhim metadata shape: `rg -n "normalizeCard|SourceMovie|SourceRating|tmdb|imdb|episode" lib src`.

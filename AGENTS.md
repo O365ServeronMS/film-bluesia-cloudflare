@@ -37,7 +37,7 @@
 - Run `npm run build` when code changes are made and it is reasonable.
 - `package.json` currently has no lint or test scripts. Run them only if added later.
 - For UI changes, verify shared components first: `MovieCard`, `SectionRow`, list/search/home usage, and mobile layout classes.
-- For Cloudflare/cache changes, inspect `src/middleware.ts`, `lib/cache.ts`, `lib/ophim.ts`, `src/worker.ts`, and `CLOUDFLARE_CACHE.md`.
+- For Cloudflare/cache changes, inspect `src/middleware.ts`, `lib/cache.ts`, `lib/ophim.ts`, `src/worker.ts`, and `docs/CLOUDFLARE_CACHE.md`.
 
 ## Response Format
 

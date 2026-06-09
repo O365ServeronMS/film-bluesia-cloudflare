@@ -1,5 +1,18 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-09 Adaptive Client-Side Prefetch
+
+- Added adaptive client-side prefetch in `src/client/adaptivePrefetch.ts`, initialized globally from `src/layouts/BaseLayout.astro`.
+- Navigation habit tracking is localStorage-only under `filmbluesia_nav_stats_v1`; this keeps behavior personal to each browser and avoids server-side tracking, Cloudflare KV writes, or external analytics.
+- Route transitions are recorded as previous normalized route/category -> current normalized route/category counts. Dynamic detail/playback pages normalize to `/movie` and `/watch`; list pages remain distinguishable by `/list/[type]` plus safe category/country filters, excluding noisy pagination.
+- Prediction thresholds are intentionally conservative: minimum transitions from the current route is `5`, and the best target must have probability at least `0.45`. Only the single best next route may be considered per page view.
+- Safety limits keep storage small: at most `24` source routes, at most `8` target routes per source, and lowest-count entries are pruned first.
+- Safe prefetch runs only after page load and during idle time with a `setTimeout` fallback. It skips when localStorage/sessionStorage is unavailable, when `navigator.connection.saveData` is true, or on `slow-2g`/`2g` connections.
+- Prefetch is limited to one predicted route per page view, deduped within the browser session, and only warms safe list resources: category/list route HTML and the first-page `/api/ophim/list/[type]` API that already exists.
+- Strict rule: never prefetch video/HLS/playback resources. The prefetch mapper never targets `/watch`, `/movie`, player/embed/playback paths, or `.m3u8`, `.ts`, `.m4s`, `.mp4` resources.
+- Changed files: `src/client/adaptivePrefetch.ts`, `src/layouts/BaseLayout.astro`, `docs/DECISIONS.md`, and `AI_MEMORY.md`.
+- Build/test result: `npm run build` passed on 2026-06-09. No lint/typecheck script exists in `package.json`; Astro build is the available verification.
+
 ## Platform
 
 - The app targets Astro server output with the Cloudflare adapter.
@@ -98,5 +111,5 @@
 
 - Run `npm run build` after code or config changes when reasonable.
 - There are currently no lint/test scripts in `package.json`.
-- For cache/runtime changes, also review `CLOUDFLARE_CACHE.md` for documentation drift.
+- For cache/runtime changes, also review `docs/CLOUDFLARE_CACHE.md` for documentation drift.
 - Do not fix unrelated worktree changes unless they directly block verification.

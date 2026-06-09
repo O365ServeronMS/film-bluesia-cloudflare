@@ -231,6 +231,11 @@ const isDev = import.meta.env.DEV;
         });
       </script>
     )}
+    <script>
+      import { initAdaptivePrefetch } from "@/src/client/adaptivePrefetch";
+
+      initAdaptivePrefetch();
+    </script>
     <slot name="head" />
   </head>
   <body class="font-sans antialiased">
