@@ -7,6 +7,7 @@
 - Detail pages preserve the same `returnTo` in watch and episode links; watch pages preserve it in detail and same-watch episode links.
 - Active bottom-nav context is derived from `returnTo` first, then legacy `from` parsing and movie metadata fallback.
 - Same-watch episode changes may still replace the current watch URL to avoid polluting Back history with episode-to-episode entries; this is separate from normal list -> detail -> watch navigation.
+- In-page back buttons must prioritize safe returnTo navigation over history.back(). Browser-native Back cannot restore a list page when a detail page is opened in a new tab because the new tab has no previous history entry. Do not create fake history entries for this.
 
 ## 2026-06-09 Adaptive Client-Side Prefetch
 

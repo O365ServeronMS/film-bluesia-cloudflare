@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Play, Star, Users } from "lucide-react";
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { MovieActions } from "@/components/LocalMovieActions";
 import { episodeWatchKey } from "@/lib/episodes";
-import { fallbackReturnToForSource, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
+import { fallbackReturnToForSource, getBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie, movieDetailCachePolicy } from "@/lib/ophim";
 import { getDisplayRating, proxiedImage, stripHtml } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ const displayRating = getDisplayRating(movie);
 const navSourceKey = navSourceFromSearchParams(Astro.url.searchParams) || inferNavSourceFromMovie(movie);
 const returnTo = returnToFromSearchParams(Astro.url.searchParams) || fallbackReturnToForSource(navSourceKey);
 const primaryWatchHref = hrefWithReturnTo(`/watch/${movie.slug}${firstEp ? `?ep=${encodeURIComponent(episodeWatchKey(firstEp, 0))}` : ""}`, returnTo, navSourceKey);
-const backHref = returnTo || "/";
+const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fallbackPath: "/" });
 ---
 
 <BaseLayout title={title} description={description} image={metaImage} type="video.movie" navSourceFallback={navSourceKey}>

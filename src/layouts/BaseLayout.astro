@@ -70,6 +70,27 @@ const isDev = import.meta.env.DEV;
         const link = event.target instanceof Element ? event.target.closest("a[data-nav-back]") : null;
         if (!(link instanceof HTMLAnchorElement)) return;
         if (link.origin !== window.location.origin) return;
+
+        const explicitReturnTo = returnToFromSearch(window.location.search);
+        if (explicitReturnTo) {
+          event.preventDefault();
+          window.location.assign(explicitReturnTo);
+          return;
+        }
+
+        const target = new URL(link.href, window.location.href);
+        const targetPath = safeInternalPath(target.pathname + target.search);
+        if (targetPath) {
+          const fallbackReturnTo = currentReturnTo();
+          if (fallbackReturnTo && !returnToFromSearch(target.search) && (target.pathname.startsWith("/movie/") || target.pathname.startsWith("/watch/"))) {
+            target.searchParams.set("returnTo", fallbackReturnTo);
+            target.searchParams.delete("from");
+            if (navSourceFromHash(target.hash)) target.hash = "";
+            link.href = target.toString();
+          }
+          return;
+        }
+
         let sameOriginReferrer = false;
         try {
           sameOriginReferrer = Boolean(document.referrer && new URL(document.referrer).origin === window.location.origin);
@@ -80,13 +101,10 @@ const isDev = import.meta.env.DEV;
           return;
         }
 
-        const target = new URL(link.href, window.location.href);
-        const returnTo = currentReturnTo();
-        if (returnTo && !returnToFromSearch(target.search) && (target.pathname.startsWith("/movie/") || target.pathname.startsWith("/watch/"))) {
-          target.searchParams.set("returnTo", returnTo);
-          target.searchParams.delete("from");
-          if (navSourceFromHash(target.hash)) target.hash = "";
-          link.href = target.toString();
+        const fallbackReturnTo = currentReturnTo();
+        if (fallbackReturnTo) {
+          event.preventDefault();
+          window.location.assign(fallbackReturnTo);
         }
       }, true);
 
