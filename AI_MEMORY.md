@@ -56,7 +56,7 @@
 - `SearchSuggest.tsx`: search input/suggestions.
 - `LocalMovieActions.tsx`: favorites/history localStorage store and action buttons.
 - `StoredMovieGrid.tsx`: localStorage-backed favorites/history grid.
-- `HlsVideo.tsx`: native HTML5 video player for OPhim direct m3u8 streams, with dynamic hls.js fallback, conservative/adaptive buffer tuning, retry config, and fatal error recovery when browser-native HLS is not available.
+- `HlsVideo.tsx`: HTML5 video player for OPhim direct m3u8 streams, with hls.js-first playback on MSE-capable browsers, native HLS fallback, conservative/adaptive buffer tuning, retry config, and fatal error recovery.
 - `IframePlayerFacade.tsx`: click-to-load iframe player facade for embed playback.
 - `WatchRecorder.tsx`: records watched movie history.
 
@@ -104,7 +104,7 @@
 - `VSEMBED_MOBILE_EMBED_HOST` can switch mobile embed host among an allowlist.
 - `lib/vsembed.ts` constructs VSEmbed movie/episode URLs from TMDB/IMDb IDs when available.
 - Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Do not proxy or re-chunk video through Cloudflare Worker. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery. Default buffer should remain conservative; 5-minute buffer is an upper cap for good-network aggressive mode, not the universal default.
-- OPhim playback architecture after the native player change: `lib/ophim.ts` maps OPhim `link_m3u8`/`linkM3u8` to `Episode.linkM3u8`; `src/pages/watch/[slug].astro` passes that m3u8 URL to `components/HlsVideo.tsx`; `HlsVideo.tsx` renders `<video controls playsInline preload="metadata">`, sets `video.src` directly when `canPlayType("application/vnd.apple.mpegurl")` is available, otherwise dynamically imports `hls.js`, applies buffer/retry config, attaches it to the video element, recovers one fatal media error, retries one fatal network load, and destroys/detaches on cleanup.
+- OPhim playback architecture after the hls.js-first player change: `lib/ophim.ts` maps OPhim `link_m3u8`/`linkM3u8` to `Episode.linkM3u8`; `src/pages/watch/[slug].astro` passes that m3u8 URL to `components/HlsVideo.tsx`; `HlsVideo.tsx` renders `<video controls playsInline preload="metadata">`, dynamically imports `hls.js`, uses hls.js when `Hls.isSupported()` is true, falls back to native HLS when `canPlayType("application/vnd.apple.mpegurl")` is available, recovers fatal network errors with `startLoad()`, recovers fatal media errors with `recoverMediaError()`, destroys hls.js before native fallback for other fatal errors, and destroys/detaches on cleanup.
 - Current Vidsrc API/call structure observed from the repo: `lib/vsembed.ts` uses provider/server name `Vidsrc`, default embed base `https://vsembed.ru`, optional override `VSEMBED_EMBED_BASE_URL`, and identity query parameters that prefer `tmdb=...` before `imdb=tt...`.
 - Vidsrc movie URLs are built in `buildVsembedMovieUrl()` as `/embed/movie?tmdb=...&autoplay=0` or `/embed/movie?imdb=...&autoplay=0`; TV URLs are built in `buildVsembedEpisodeUrl()` as `/embed/tv?tmdb=...&season=1&episode=...&autoplay=0&autonext=1` or the same with `imdb=...`.
 - Vidsrc fallback integration: `lib/ophim.ts` calls `buildVsembedServer(movie)` and appends the returned server to `movie.episodes`; `src/pages/watch/[slug].astro` selects it through the existing `server` query index, reads `episode.linkEmbed`, rewrites only allowed Vidsrc/VSEmbed hosts for `mirror` or mobile host selection, and renders it through `components/IframePlayerFacade.tsx` as an iframe after click-to-load.

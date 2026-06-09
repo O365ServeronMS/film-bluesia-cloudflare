@@ -69,6 +69,10 @@ function getHlsBufferConfig() {
   };
 }
 
+function canUseNativeHls(video: HTMLVideoElement) {
+  return Boolean(video.canPlayType("application/vnd.apple.mpegurl"));
+}
+
 export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState("");
@@ -89,47 +93,51 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
     async function setup() {
       if (!video || disposed) return;
 
-      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      const fallbackToNativeHls = () => {
+        if (!video || disposed || !canUseNativeHls(video)) return false;
+
+        setError("");
         video.src = src;
         video.load();
-        return;
-      }
+        return true;
+      };
 
       try {
         const { default: Hls } = (await import("hls.js")) as { default: HlsConstructor };
         if (disposed) return;
 
         if (!Hls.isSupported()) {
-          setError("Trinh duyet khong ho tro HLS.");
+          if (!fallbackToNativeHls()) {
+            setError("Trinh duyet khong ho tro HLS.");
+          }
           return;
         }
 
         const hls = new Hls(getHlsBufferConfig());
-        let recoveredMediaError = false;
-        let retriedNetworkError = false;
 
         const onHlsError = (_event: string, data: HlsErrorData) => {
           if (!data.fatal || disposed) return;
 
-          if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recoveredMediaError) {
-            recoveredMediaError = true;
-            hls.recoverMediaError();
-            return;
-          }
-
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !retriedNetworkError) {
-            retriedNetworkError = true;
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             hls.startLoad();
             return;
           }
 
-          setError("Khong the phuc hoi phien phat HLS.");
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+            return;
+          }
+
           if (detachHlsErrorListener) {
             detachHlsErrorListener();
             detachHlsErrorListener = null;
           }
           hls.destroy();
           hlsInstance = null;
+
+          if (!fallbackToNativeHls()) {
+            setError("Khong the phuc hoi phien phat HLS.");
+          }
         };
 
         hlsInstance = hls;
@@ -138,7 +146,9 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
         hls.loadSource(src);
         hls.attachMedia(video);
       } catch {
-        if (!disposed) setError("Khong the tai trinh phat HLS.");
+        if (!disposed && !fallbackToNativeHls()) {
+          setError("Khong the tai trinh phat HLS.");
+        }
       }
     }
 

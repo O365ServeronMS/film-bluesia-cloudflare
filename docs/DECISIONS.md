@@ -21,6 +21,12 @@
 - Changed files: `src/client/adaptivePrefetch.ts`, `src/layouts/BaseLayout.astro`, `docs/DECISIONS.md`, and `AI_MEMORY.md`.
 - Build/test result: `npm run build` passed on 2026-06-09. No lint/typecheck script exists in `package.json`; Astro build is the available verification.
 
+## 2026-06-09 HLS Playback Strategy
+
+- HLS playback is hls.js-first for MSE-capable browsers, with native HLS fallback for iOS/Safari or unsupported MSE cases, to keep desktop browser playback behavior consistent without breaking iOS native playback.
+- `components/HlsVideo.tsx` must keep `hls.js` as a dynamic import inside the direct watch/player path; do not import it globally.
+- Fatal hls.js errors recover by type: network errors call `startLoad()`, media errors call `recoverMediaError()`, and other fatal errors destroy hls.js before attempting native HLS fallback.
+
 ## Platform
 
 - The app targets Astro server output with the Cloudflare adapter.
@@ -94,7 +100,7 @@
 
 ## Player
 
-- Direct OPhim HLS playback uses `HlsVideo.tsx` with native HTML5 video and dynamic hls.js fallback.
+- Direct OPhim HLS playback uses `HlsVideo.tsx` with hls.js first on MSE-capable browsers and native HTML5 HLS fallback for iOS/Safari or unsupported MSE cases.
 - M3U8/HLS chunking is delegated to upstream playlist segments; do not proxy, re-chunk, download, transcode, or store third-party video segments through the Cloudflare Worker.
 - HLS performance tuning belongs in the client player: conservative default buffer, good-network aggressive buffer cap, retry settings, lazy loading, native HLS fallback, and fatal error recovery.
 - Default HLS buffer target should remain 60 seconds. Aggressive mode may target 180 seconds with a 300-second max cap only on good connections; 5-minute buffering is not a universal default.
@@ -103,7 +109,7 @@
 
 ## Vidsrc Playback Must Remain Isolated From OPhim Player Changes
 
-- OPhim playback may use native video plus hls.js fallback for direct m3u8 streams.
+- OPhim playback may use hls.js plus native video fallback for direct m3u8 streams.
 - Vidsrc playback/API/embed flow must not be modified unless explicitly requested.
 - Do not remove dependencies used by Vidsrc.
 - Do not route Vidsrc through the OPhim HLS player.

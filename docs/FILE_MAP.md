@@ -52,7 +52,7 @@
 - `components/SearchSuggest.tsx`: search box and suggestions.
 - `components/LocalMovieActions.tsx`: favorites/history localStorage store and detail-page buttons.
 - `components/StoredMovieGrid.tsx`: favorites/history `MovieCard` grid.
-- `components/HlsVideo.tsx`: native HTML5 video player for OPhim direct HLS/m3u8 streams; uses native Safari/iOS HLS when supported and dynamically imports hls.js as the fallback.
+- `components/HlsVideo.tsx`: HTML5 video player for OPhim direct HLS/m3u8 streams; dynamically imports hls.js for MSE-capable browsers and falls back to native Safari/iOS HLS.
 - `components/IframePlayerFacade.tsx`: click-to-load iframe embed player facade used by Vidsrc embed URLs.
 - `components/WatchRecorder.tsx`: local history recording on watch pages.
 
