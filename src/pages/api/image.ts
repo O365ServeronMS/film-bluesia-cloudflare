@@ -3,7 +3,7 @@ import { imageCacheTtlSeconds, readBinaryCache, writeBinaryCache } from "@/lib/c
 
 const FALLBACK_IMAGE_ROOTS = ["https://img.ophim.live", "https://img.ophim.cc"];
 const IMAGE_STALE_WHILE_REVALIDATE_SECONDS = 86400;
-const IMAGE_CACHE_PREFIX = "cf-img-jun-2026";
+const IMAGE_CACHE_PREFIX = "cf-img-jun-2026b";
 
 type ImageProfileName =
   | "poster-mobile"
@@ -18,15 +18,16 @@ type ImageProfile = {
   type: "poster" | "backdrop" | "thumb";
   width: number;
   quality: number;
+  maxOriginFallbackBytes: number;
 };
 
 const PROFILES: Record<ImageProfileName, ImageProfile> = {
-  "poster-mobile": { name: "poster-mobile", type: "poster", width: 360, quality: 65 },
-  "poster-desktop": { name: "poster-desktop", type: "poster", width: 560, quality: 75 },
-  "backdrop-mobile": { name: "backdrop-mobile", type: "backdrop", width: 780, quality: 60 },
-  "backdrop-desktop": { name: "backdrop-desktop", type: "backdrop", width: 1280, quality: 70 },
-  "thumb-mobile": { name: "thumb-mobile", type: "thumb", width: 320, quality: 65 },
-  "thumb-desktop": { name: "thumb-desktop", type: "thumb", width: 480, quality: 70 }
+  "poster-mobile": { name: "poster-mobile", type: "poster", width: 360, quality: 65, maxOriginFallbackBytes: 700_000 },
+  "poster-desktop": { name: "poster-desktop", type: "poster", width: 560, quality: 75, maxOriginFallbackBytes: 1_200_000 },
+  "backdrop-mobile": { name: "backdrop-mobile", type: "backdrop", width: 780, quality: 60, maxOriginFallbackBytes: 1_500_000 },
+  "backdrop-desktop": { name: "backdrop-desktop", type: "backdrop", width: 1280, quality: 70, maxOriginFallbackBytes: 2_500_000 },
+  "thumb-mobile": { name: "thumb-mobile", type: "thumb", width: 320, quality: 65, maxOriginFallbackBytes: 700_000 },
+  "thumb-desktop": { name: "thumb-desktop", type: "thumb", width: 480, quality: 70, maxOriginFallbackBytes: 1_200_000 }
 };
 
 function cacheLog(message: string, details?: Record<string, unknown>) {
@@ -123,6 +124,7 @@ function imageHeaders(options: {
   profile?: ImageProfileName;
   etag?: string;
   contentType?: string;
+  transformStatus?: "transformed" | "origin-fallback";
 }) {
   const cacheControl = cacheControlHeader();
   const contentType = options.contentType || "image/webp";
@@ -136,6 +138,7 @@ function imageHeaders(options: {
     "X-Film-Bluesia-Net-Cache-Type": "image",
     "X-Film-Bluesia-Net-Image-Format": imageFormat,
     "X-Film-Bluesia-Net-Image-Profile": options.profile || "",
+    "X-Film-Bluesia-Net-Image-Transform": options.transformStatus || (contentType === "image/webp" ? "transformed" : "origin-fallback"),
     "X-Film-Bluesia-Net-Image-Variant": "cloudflare-profile-v3",
     ...(options.etag ? { "ETag": `"${options.etag}"` } : {}),
     ...(options.sourceUrl ? { "X-Film-Bluesia-Net-Image-Source": options.sourceUrl } : {})
@@ -182,7 +185,7 @@ async function fetchOptimizedImage(url: string, profile: ImageProfile) {
   return fetch(url, init);
 }
 
-function placeholderResponse(imageUrl: string, status: number | string) {
+function placeholderResponse(imageUrl: string, status: number | string, transformStatus = "fallback") {
   cacheLog("IMAGE_FALLBACK_PLACEHOLDER", { imageUrl, status });
   return new Response(
     `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540"><rect width="360" height="540" fill="#18181b"/><text x="180" y="270" fill="#71717a" font-family="Arial,sans-serif" font-size="22" text-anchor="middle">No image</text></svg>`,
@@ -192,7 +195,8 @@ function placeholderResponse(imageUrl: string, status: number | string) {
         "Content-Type": "image/svg+xml",
         "Cache-Control": "no-store",
         "X-Film-Bluesia-Net-Cache": "FALLBACK",
-        "X-Film-Bluesia-Net-Cache-Type": "image"
+        "X-Film-Bluesia-Net-Cache-Type": "image",
+        "X-Film-Bluesia-Net-Image-Transform": transformStatus
       }
     }
   );
@@ -209,6 +213,14 @@ async function putEdgeCache(request: Request, response: Response) {
 function usableImageContentType(value: string) {
   const contentType = value.toLowerCase().split(";")[0].trim();
   return /^(image\/webp|image\/jpeg|image\/jpg|image\/png|image\/avif)$/.test(contentType) ? contentType : "";
+}
+
+function imageTransformStatus(contentType: string) {
+  return contentType === "image/webp" ? "transformed" : "origin-fallback";
+}
+
+function originFallbackTooLarge(profile: ImageProfile, contentType: string, byteLength: number) {
+  return imageTransformStatus(contentType) === "origin-fallback" && byteLength > profile.maxOriginFallbackBytes;
 }
 
 export const GET: APIRoute = async ({ request, url }) => {
@@ -242,7 +254,8 @@ export const GET: APIRoute = async ({ request, url }) => {
         sourceUrl: cached.sourceUrl,
         profile: profile.name,
         etag: cached.etag,
-        contentType: cached.contentType
+        contentType: cached.contentType,
+        transformStatus: imageTransformStatus(cached.contentType)
       })
     });
     await putEdgeCache(edgeRequest, response);
@@ -267,6 +280,18 @@ export const GET: APIRoute = async ({ request, url }) => {
         cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, reason: "empty-body", profile: profile.name });
         continue;
       }
+      if (originFallbackTooLarge(profile, contentType, body.byteLength)) {
+        lastStatus = `rejected-large-origin:${body.byteLength}`;
+        cacheLog("IMAGE_OPTIMIZE_FAIL", {
+          sourceUrl: candidate,
+          reason: "rejected-large-origin",
+          contentType,
+          profile: profile.name,
+          bytes: body.byteLength,
+          maxBytes: profile.maxOriginFallbackBytes
+        });
+        continue;
+      }
 
       cacheLog("IMAGE_OPTIMIZE_OK", { sourceUrl: candidate, profile: profile.name, bytes: body.byteLength });
       const { etag, skipped } = await writeBinaryCache("images", key, body, contentType, candidate);
@@ -278,7 +303,8 @@ export const GET: APIRoute = async ({ request, url }) => {
           sourceUrl: candidate,
           profile: profile.name,
           etag,
-          contentType
+          contentType,
+          transformStatus: imageTransformStatus(contentType)
         })
       });
       await putEdgeCache(edgeRequest, response);
@@ -289,5 +315,5 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
   }
 
-  return placeholderResponse(imageUrl, lastStatus || "unknown");
+  return placeholderResponse(imageUrl, lastStatus || "unknown", String(lastStatus).startsWith("rejected-large-origin") ? "rejected-large-origin" : "fallback");
 };

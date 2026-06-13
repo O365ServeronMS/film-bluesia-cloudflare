@@ -75,12 +75,12 @@ The endpoint allows only `POST`, returns `401` for missing or invalid tokens, an
 
 ## Image cache profiles
 
-The image proxy writes only fixed profile keys to R2. It prefers Cloudflare-transformed WebP when available, but may store a valid upstream JPEG, PNG, AVIF, or WebP response under the same fixed profile key when transform output is unavailable. Width, quality, format, and legacy `w=`, `q=`, `width=`, or `quality=` params do not create arbitrary R2 objects.
+The image proxy writes only fixed profile keys to R2. It prefers Cloudflare-transformed WebP when available, but may store a small valid upstream JPEG, PNG, AVIF, or WebP response under the same fixed profile key when transform output is unavailable. Oversized untransformed origin responses are rejected and are not written to R2. Width, quality, format, and legacy `w=`, `q=`, `width=`, or `quality=` params do not create arbitrary R2 objects.
 
 R2 key format:
 
 ```text
-cf-img-jun-2026/{profile}/{hash-of-normalized-original-url}.webp
+cf-img-jun-2026b/{profile}/{hash-of-normalized-original-url}.webp
 ```
 
 Allowed profiles:
