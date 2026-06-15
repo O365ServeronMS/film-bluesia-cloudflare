@@ -10,11 +10,12 @@
 ## 2026-06-13 Image Proxy Origin Fallback
 
 - The image proxy must not return the `No image` SVG when OPhim returns a successful valid image content type. Cloudflare image transform may return WebP on supported plans, but production can also return the upstream JPEG/PNG/AVIF directly; those responses are valid and should be cached with their actual `Content-Type`.
-- Keep fixed image profiles and the active R2 namespace `cf-img-jun-2026`; do not create arbitrary width/quality variants.
+- Keep fixed image profiles and the active R2 namespace `cf-img-jun-2026-v2`; do not create arbitrary width/quality variants.
 - Oversized untransformed origin images must not be served or written into profile cache keys. `poster-mobile` must never silently become a multi-megabyte original JPEG.
 - Above-the-fold decorative art should prefer poster over thumb/backdrop because some OPhim thumb files are multi-megabyte. Do not preload or high-priority fetch large backdrop profiles unless Cloudflare transform is verified active.
 - Cache bump for this performance change: HTML cache version is `Jun26-v3-img-perf` so home and movie detail HTML stops preloading/eager-loading heavy backdrop images from stale cached HTML.
-- Cache bump for oversized origin rejection: keep R2 namespace `cf-img-jun-2026` so existing small WebP objects remain usable, but include `reject-large-origin-v1` in the internal edge cache key and reject oversized cached origin JPEG/PNG/AVIF objects before serving them.
+- Cache bump for oversized origin rejection: use R2 namespace `cf-img-jun-2026-v2` and include `reject-large-origin-v1` in the internal edge cache key so stale image objects are bypassed while rejecting oversized cached origin JPEG/PNG/AVIF objects before serving them.
+- 2026-06-15 production vars should match the Worker settings screenshot: `HTML_CACHE_VERSION=Jun26-v4`, `BLUESIA_IMAGE_TRANSFORM_MODE=cloudflare-free`, `NEXT_PUBLIC_SITE_URL=https://film.bluesia.net`, `OPHIM_REFRESH_DELAY_MS=1500`, and `OPHIM_REFRESH_MAX_MOVIES=24`. Secrets such as `ADMIN_REFRESH_TOKEN` remain Cloudflare-managed and must not be committed.
 
 ## 2026-06-09 Return-To Navigation Context
 
@@ -70,7 +71,7 @@
 - Search, watch, favorites, history, and settings should remain no-store/private HTML unless a task explicitly changes that.
 - Image cache objects use fixed profiles and WebP output; do not add arbitrary width/quality cache variants without a cache design change.
 - Refresh writes should preserve stable-hash deduplication and daily KV write-budget behavior.
-- Current active image cache namespace is `cf-img-jun-2026`.
+- Current active image cache namespace is `cf-img-jun-2026-v2`.
 - Do not change image cache namespace/prefix without explicit owner approval.
 - Do not delete old R2 cache prefixes during code changes; keep them for rollback unless explicitly requested.
 

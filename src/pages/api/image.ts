@@ -3,7 +3,7 @@ import { imageCacheTtlSeconds, readBinaryCache, writeBinaryCache } from "@/lib/c
 
 const FALLBACK_IMAGE_ROOTS = ["https://img.ophim.live", "https://img.ophim.cc"];
 const IMAGE_STALE_WHILE_REVALIDATE_SECONDS = 86400;
-const IMAGE_CACHE_PREFIX = "cf-img-jun-2026";
+const IMAGE_CACHE_PREFIX = "cf-img-jun-2026-v2";
 
 type ImageProfileName =
   | "poster-mobile"

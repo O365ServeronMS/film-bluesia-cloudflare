@@ -14,7 +14,7 @@
 - Cloudflare route targets the public site domain.
 - Cron trigger runs every 2 hours and calls the Worker `scheduled()` handler.
 - `src/worker.ts` preserves Astro `fetch` and adds scheduled OPhim refresh behavior.
-- Current app data bindings are `IMAGE_CACHE` and `KV`; required static assets binding is `ASSETS`; active image cache prefix remains `cf-img-jun-2026`.
+- Current app data bindings are `IMAGE_CACHE` and `KV`; required static assets binding is `ASSETS`; active image cache prefix remains `cf-img-jun-2026-v2`.
 - Need verification: exact Cloudflare product mode in production, because the repo uses both Worker main/assets and Astro Cloudflare adapter terminology.
 
 ## Important Commands
@@ -80,7 +80,7 @@
 ## Storage And State
 
 - Runtime metadata cache is Cloudflare KV-compatible storage.
-- Runtime image cache is Cloudflare R2 plus edge Cache API. R2 bucket: `film-bluesia-cache` (binding: `IMAGE_CACHE`). Old prefix: `cf-img-v3` (kept for rollback). Active prefix: `cf-img-jun-2026`.
+- Runtime image cache is Cloudflare R2 plus edge Cache API. R2 bucket: `film-bluesia-cache` (binding: `IMAGE_CACHE`). Old prefixes include `cf-img-v3`, `cf-img-jun-2026-v1`, and `cf-img-jun-2026` (kept for rollback). Active prefix: `cf-img-jun-2026-v2`.
 - HTML cache is Cloudflare Cache API.
 - Favorites, history, navigation context, and HLS quality preference are browser storage only.
 - Adaptive navigation prefetch is browser storage only: `src/client/adaptivePrefetch.ts` records local transition counts in `localStorage` under `filmbluesia_nav_stats_v1`, uses `sessionStorage` for last-route and per-session prefetch dedupe, and is initialized from `src/layouts/BaseLayout.astro`.
@@ -94,7 +94,7 @@
 - 2026-06-13 image incident: newly added movies rendered `No image` when source payloads used camelCase or alternate image fields. Keep image mapping in `lib/movie-images.ts` and support `posterUrl`, `poster_url`, `poster`, `thumbUrl`, `thumb_url`, `thumb`, `thumbnail`, `image_url`, and `image` before allowing an empty normalized poster/thumb.
 - 2026-06-13 follow-up: production image proxy also showed `No image` when Cloudflare did not transform a valid upstream JPEG to WebP. `src/pages/api/image.ts` must accept valid `image/jpeg`, `image/png`, `image/avif`, and `image/webp` origin responses and serve/cache them with the actual content type.
 - Current production verification showed `/cdn-cgi/image` unavailable and Worker `cf.image` returning upstream JPEG for new OPhim images. Keep transform attempts, but prefer poster assets for spotlight/detail backgrounds and avoid eager/high-priority backdrop loads while transform is not guaranteed.
-- Image cache namespace remains `cf-img-jun-2026` so existing small R2 WebP objects stay usable. Oversized untransformed origin fallbacks are rejected on both R2 read and origin fetch; the edge cache key includes `reject-large-origin-v1` so old edge `EDGE_HIT` objects are bypassed. Use `X-Film-Bluesia-Net-Image-Transform` to distinguish `transformed`, `origin-fallback`, and `rejected-large-origin`.
+- Image cache namespace is `cf-img-jun-2026-v2`. Oversized untransformed origin fallbacks are rejected on both R2 read and origin fetch; the edge cache key includes the active prefix plus `reject-large-origin-v1` so old edge `EDGE_HIT` objects are bypassed. Use `X-Film-Bluesia-Net-Image-Transform` to distinguish `transformed`, `origin-fallback`, and `rejected-large-origin`.
 - `movieDetailFromPayload()` builds `MovieDetail`, episode server data, labels, and optional VSEmbed fallback server.
 - `getHome()` fetches latest, single, series, animation, TV, cinema, and filtered list sections, then builds Smart Spotlight candidates.
 - `getList()` supports quick country/category filters for selected list types.
