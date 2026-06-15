@@ -1,3 +1,5 @@
+import { runtimeEnv } from "@/lib/runtime-env";
+
 export type ImageVariant = "m" | "d";
 
 export type SignedImagePair = {
@@ -36,18 +38,13 @@ export async function buildCachedImageUrl(upstreamUrl: string | undefined, varia
     return upstreamUrl;
   }
 
-  // We read from process.env dynamically because Astro sometimes wraps import.meta.env
-  // For Cloudflare, process.env is often polyfilled, or you access it via locals/env.
-  // In our case, film-bluesia-cloudflare probably uses `import.meta.env` for Astro.
-  // Let's use `import.meta.env` which is the standard Astro way.
-  // Wait, `process.env` might also be needed if called from an API route.
-  // We'll safely check both.
-  
-  const cacheBase = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.PUBLIC_IMAGE_CACHE_URL : process?.env?.PUBLIC_IMAGE_CACHE_URL;
-  const secret = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.IMAGE_CACHE_SIGNING_SECRET : process?.env?.IMAGE_CACHE_SIGNING_SECRET;
+  const env = runtimeEnv() as Record<string, unknown> | undefined;
+
+  const cacheBase = env?.PUBLIC_IMAGE_CACHE_URL || (typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.PUBLIC_IMAGE_CACHE_URL : process?.env?.PUBLIC_IMAGE_CACHE_URL);
+  const secret = env?.IMAGE_CACHE_SIGNING_SECRET || (typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.IMAGE_CACHE_SIGNING_SECRET : process?.env?.IMAGE_CACHE_SIGNING_SECRET);
 
   if (!cacheBase || !secret) {
-    if (!secret && process.env.NODE_ENV !== "production") {
+    if (!secret && process?.env?.NODE_ENV !== "production") {
       console.warn("[image-cache] Missing IMAGE_CACHE_SIGNING_SECRET, falling back to upstream URL");
     }
     return upstreamUrl;
