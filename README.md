@@ -1,48 +1,65 @@
-# FilmBluesia Cloudflare
+# FilmBluesia
 
-Astro + React movie catalog/streaming app deployed on Cloudflare Workers/Pages for `film.bluesia.net`.
+A minimal, high-performance movie catalog and streaming application built with Astro and React. Deployed on Cloudflare Workers/Pages.
 
-## Image Proxy Troubleshooting
+## Features
 
-Movie posters and thumbnails are loaded through `/api/image`. The proxy only allows configured OPhim image sources and rejects arbitrary external domains.
+- **Astro + React**: Blazing fast server-side and client-side rendering.
+- **Upstream Integration**: Fetches metadata and streams from OPhim.
+- **Image Proxy**: Securely proxies and caches external poster images.
+- **Cloudflare Native**: Designed to run efficiently on Cloudflare Pages/Workers using KV, R2, and Cache API.
 
-Configure trusted OPhim image hosts with:
+## Getting Started
 
-```env
-IMAGE_ALLOWED_HOSTS=img.ophim1.com,img.ophim.live
-IMAGE_ALLOWED_HOST_SUFFIXES=.ophim.live,.ophim1.com
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm
+
+### Installation
+
+Install the project dependencies:
+
+```bash
+npm install
 ```
 
-When users report `No image`:
+### Development
 
-1. Check whether the source host is allowed:
+Run the development server locally:
 
-```powershell
-curl -i "https://film.bluesia.net/api/image?url=https%3A%2F%2Fimg.ophim.live%2Fuploads%2Fmovies%2Fsieu-quay-marsupilami-poster.jpg&profile=poster-desktop"
+```bash
+npm run dev
 ```
 
-2. Compare with a known OPhim image host:
+The application will be accessible at `http://localhost:4321`.
 
-```powershell
-curl -i "https://film.bluesia.net/api/image?url=https%3A%2F%2Fimg.ophim1.com%2Fuploads%2Fmovies%2Fsieu-quay-marsupilami-poster.jpg&profile=poster-desktop"
+### Build & Preview
+
+Build the production site:
+
+```bash
+npm run build
 ```
 
-3. Confirm unknown domains are blocked:
+Preview the Cloudflare Pages worker environment locally using Wrangler:
 
-```powershell
-curl -i "https://film.bluesia.net/api/image?url=https%3A%2F%2Fexample.com%2Fposter.jpg&profile=poster-desktop"
+```bash
+npm run preview
 ```
 
-Expected behavior: allowed OPhim image URLs return `200` with an `image/*` content type and `Cache-Control: public, max-age=604800, stale-while-revalidate=86400`. Unknown hosts return `400` JSON with `IMAGE_HOST_NOT_ALLOWED` and short/no cache headers. Upstream `403`, `404`, non-image, or `5xx` responses should not be cached for more than 300 seconds.
+### Deployment
 
-If the request URL differs from the logged candidate URL, check the `IMAGE_URL_RESOLVED` and `IMAGE_CANDIDATE_ATTEMPT` logs. The original `url` query param must be candidate `0`; later candidates are explicit mirror attempts and should never include `img.ophim.cc` unless that host was deliberately added to `IMAGE_ALLOWED_HOSTS` after verification.
+Deploy to Cloudflare:
 
-An upstream `404` with `application/json` should log `IMAGE_UPSTREAM_NOT_FOUND`, not `IMAGE_OPTIMIZE_FAIL`. `IMAGE_OPTIMIZE_FAIL` means a valid `200 image/*` origin response reached the Cloudflare image transform step and the transform failed or returned unusable output.
-
-If Cloudflare shows `outcome=canceled`, compare the same request's lifecycle logs by `requestId`: `IMAGE_REQUEST_START`, `IMAGE_CACHE_MISS`, `IMAGE_CANDIDATE_ATTEMPT`, `IMAGE_ORIGIN_FETCH_DONE`, `IMAGE_OPTIMIZE_SUCCESS`, `IMAGE_CACHE_PUT_SUCCESS`, and `IMAGE_RESPONSE_SENT`. Missing `IMAGE_RESPONSE_SENT` usually means the request was canceled before the Worker finished writing the response.
-
-To inspect current OPhim image hosts without changing the allowlist:
-
-```powershell
-npm run scan:image-hosts
+```bash
+npm run deploy
 ```
+
+## Troubleshooting & Docs
+
+For advanced caching architecture, image proxy details, and configuration:
+- [Cloudflare Caching Configuration](docs/CLOUDFLARE_CACHE.md)
+- [Image Proxy Troubleshooting](docs/IMAGE_TROUBLESHOOTING.md)
+- [Architectural Decisions](docs/DECISIONS.md)
+- [Project File Map](docs/FILE_MAP.md)
