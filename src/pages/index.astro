@@ -12,8 +12,8 @@ const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
 const firstHeroImage = home.hero[0]?.poster || home.hero[0]?.thumb;
 const heroPreloadSrcSet = firstHeroImage
   ? proxiedImageCandidateSrcSet(firstHeroImage, [
-      { profile: "backdrop-mobile", width: 780 },
-      { profile: "backdrop-desktop", width: 1280 }
+      { profile: "mobile", width: 780 },
+      { profile: "desktop", width: 1280 }
     ])
   : undefined;
 ---

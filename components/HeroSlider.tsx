@@ -211,10 +211,10 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
         {activeImage && (
           <img
             key={`${active.slug}-${activeImage}`}
-            src={proxiedImage(activeImage, "backdrop-mobile")}
+            src={proxiedImage(activeImage, "mobile")}
             srcSet={proxiedImageCandidateSrcSet(activeImage, [
-              { profile: "backdrop-mobile", width: 780 },
-              { profile: "backdrop-desktop", width: 1280 }
+              { profile: "mobile", width: 780 },
+              { profile: "desktop", width: 1280 }
             ])}
             sizes="(min-width: 640px) 688px, calc(100vw - 32px)"
             alt={active.name}
@@ -222,7 +222,7 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
             fetchPriority={visibleIndex === 0 ? "high" : "auto"}
             decoding="async"
             data-movie-poster
-            data-fallback-src={activeImage ? proxiedImage(activeImage, "backdrop-desktop") : undefined}
+            data-fallback-src={activeImage ? proxiedImage(activeImage, "desktop") : undefined}
             data-original-src={activeImage || undefined}
             data-placeholder-src="/image-placeholder.svg"
             className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity duration-700"

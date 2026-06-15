@@ -87,14 +87,10 @@ export function normalizeEpisodeName(value?: string, index = 0) {
 }
 
 export type ImageProfile =
-  | "poster-mobile"
-  | "poster-desktop"
-  | "backdrop-mobile"
-  | "backdrop-desktop"
-  | "thumb-mobile"
-  | "thumb-desktop";
+  | "mobile"
+  | "desktop";
 
-export function proxiedImage(src?: string, profile: ImageProfile = "poster-mobile") {
+export function proxiedImage(src?: string, profile: ImageProfile = "mobile") {
   if (!src) return "";
   if (src.startsWith("/api/image")) return src;
   if (src.startsWith("/")) return src;

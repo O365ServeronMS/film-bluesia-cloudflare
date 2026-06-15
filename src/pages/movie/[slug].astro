@@ -29,9 +29,9 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
     <section class="relative min-h-[560px] overflow-hidden">
       {heroImage && (
         <picture>
-          <source media="(min-width: 640px)" srcset={proxiedImage(heroImage, "backdrop-desktop")} />
+          <source media="(min-width: 640px)" srcset={proxiedImage(heroImage, "desktop")} />
           <img
-            src={proxiedImage(heroImage, "backdrop-mobile")}
+            src={proxiedImage(heroImage, "mobile")}
             alt={movie.name}
             class="absolute inset-0 h-full w-full object-cover opacity-60"
             fetchpriority="low"
@@ -49,15 +49,15 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
           <div class="w-36 shrink-0 overflow-hidden rounded-3xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
             {posterImage && (
               <picture>
-                <source media="(min-width: 640px)" srcset={proxiedImage(posterImage, "poster-desktop")} />
+                <source media="(min-width: 640px)" srcset={proxiedImage(posterImage, "desktop")} />
                 <img
-                  src={proxiedImage(posterImage, "poster-mobile")}
+                  src={proxiedImage(posterImage, "mobile")}
                   alt={movie.name}
                   class="aspect-[2/3] h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
                   data-movie-poster
-                  data-fallback-src={posterImage ? proxiedImage(posterImage, "poster-desktop") : undefined}
+                  data-fallback-src={posterImage ? proxiedImage(posterImage, "desktop") : undefined}
                   data-original-src={posterImage || undefined}
                   data-placeholder-src="/image-placeholder.svg"
                 />

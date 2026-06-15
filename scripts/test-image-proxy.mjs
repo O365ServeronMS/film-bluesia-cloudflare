@@ -12,14 +12,14 @@ globalThis.caches = {
   }
 };
 
-function apiUrl(imageUrl, profile = "poster-desktop") {
+function apiUrl(imageUrl, profile = "desktop") {
   const url = new URL("https://film.bluesia.net/api/image");
   url.searchParams.set("url", imageUrl);
   url.searchParams.set("profile", profile);
   return url;
 }
 
-async function callImageRoute(imageUrl, fetcher, profile = "poster-desktop", env = undefined) {
+async function callImageRoute(imageUrl, fetcher, profile = "desktop", env = undefined) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetcher;
   setRuntimeEnv(env);
@@ -165,7 +165,7 @@ for (const status of [400, 403, 404, 502]) {
   const { value: response, logs } = await captureLogs(() => callImageRoute("https://img.ophim.cc/uploads/movies/missing.jpg", async () => new Response(JSON.stringify({ statusCode: 404 }), {
     status: 404,
     headers: { "content-type": "application/json; charset=utf-8" }
-  }), "poster-desktop", { IMAGE_ALLOWED_HOSTS: "img.ophim.cc", IMAGE_ALLOWED_HOST_SUFFIXES: "" }));
+  }), "desktop", { IMAGE_ALLOWED_HOSTS: "img.ophim.cc", IMAGE_ALLOWED_HOST_SUFFIXES: "" }));
   assert.equal(response.status, 404);
   assert.equal(logs.some((log) => log.message.includes("IMAGE_UPSTREAM_NOT_FOUND") && log.details.candidateUrl.includes("img.ophim.cc")), true);
   assert.equal(logs.some((log) => log.message.includes("IMAGE_OPTIMIZE_FAIL") && log.details.candidateUrl?.includes("img.ophim.cc")), false);
@@ -188,7 +188,7 @@ for (const status of [400, 403, 404, 502]) {
       }
     }
   };
-  const response = await callImageRoute("https://img.ophim.live/uploads/movies/cache-key.jpg", imageFetch, "poster-desktop", env);
+  const response = await callImageRoute("https://img.ophim.live/uploads/movies/cache-key.jpg", imageFetch, "desktop", env);
   assert.equal(response.status, 200);
   assert.equal(keys.get.length, 1);
   assert.equal(keys.put.length, 1);

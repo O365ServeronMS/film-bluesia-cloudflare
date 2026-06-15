@@ -11,16 +11,11 @@ const UPSTREAM_ERROR_CACHE_CONTROL = "public, max-age=300";
 const REDIRECT_LIMIT = 4;
 
 type ImageProfileName =
-  | "poster-mobile"
-  | "poster-desktop"
-  | "backdrop-mobile"
-  | "backdrop-desktop"
-  | "thumb-mobile"
-  | "thumb-desktop";
+  | "mobile"
+  | "desktop";
 
 type ImageProfile = {
   name: ImageProfileName;
-  type: "poster" | "backdrop" | "thumb";
   width: number;
   quality: number;
   maxOriginBytes: number;
@@ -30,12 +25,8 @@ type ImageProfile = {
 };
 
 const PROFILES: Record<ImageProfileName, ImageProfile> = {
-  "poster-mobile": { name: "poster-mobile", type: "poster", width: 360, quality: 65, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 700_000, maxOriginFallbackBytes: 700_000 },
-  "poster-desktop": { name: "poster-desktop", type: "poster", width: 560, quality: 75, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 1_200_000, maxOriginFallbackBytes: 1_200_000 },
-  "backdrop-mobile": { name: "backdrop-mobile", type: "backdrop", width: 780, quality: 60, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 1_500_000, maxOriginFallbackBytes: 1_500_000 },
-  "backdrop-desktop": { name: "backdrop-desktop", type: "backdrop", width: 1280, quality: 70, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 2_500_000, maxOriginFallbackBytes: 2_500_000 },
-  "thumb-mobile": { name: "thumb-mobile", type: "thumb", width: 320, quality: 65, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 700_000, maxOriginFallbackBytes: 700_000 },
-  "thumb-desktop": { name: "thumb-desktop", type: "thumb", width: 480, quality: 70, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 1_200_000, maxOriginFallbackBytes: 1_200_000 }
+  "mobile": { name: "mobile", width: 400, quality: 65, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 700_000, maxOriginFallbackBytes: 1_500_000 },
+  "desktop": { name: "desktop", width: 800, quality: 72, maxOriginBytes: 5_000_000, hardOriginBytes: 8_000_000, targetOutputBytes: 1_500_000, maxOriginFallbackBytes: 2_500_000 }
 };
 
 function cacheLog(message: string, details?: Record<string, unknown>) {
@@ -75,20 +66,12 @@ function numberParam(...values: Array<string | null>) {
   return 0;
 }
 
-function legacyType(value: string | null) {
-  const type = String(value || "poster").trim().toLowerCase();
-  return type === "backdrop" || type === "thumb" || type === "poster" ? type : "poster";
-}
-
 function imageProfile(url: URL): ImageProfile {
   const requested = String(url.searchParams.get("profile") || "").trim().toLowerCase();
-  if (requested in PROFILES) return PROFILES[requested as ImageProfileName];
+  if (requested === "mobile" || requested === "desktop") return PROFILES[requested as ImageProfileName];
 
-  const type = legacyType(url.searchParams.get("type"));
   const width = numberParam(url.searchParams.get("w"), url.searchParams.get("width"));
-  if (type === "backdrop") return width >= 1000 ? PROFILES["backdrop-desktop"] : PROFILES["backdrop-mobile"];
-  if (type === "thumb") return width >= 400 ? PROFILES["thumb-desktop"] : PROFILES["thumb-mobile"];
-  return width >= 480 ? PROFILES["poster-desktop"] : PROFILES["poster-mobile"];
+  return width >= 600 ? PROFILES["desktop"] : PROFILES["mobile"];
 }
 
 function isTrustedOphimMirror(url: URL, registry = imageSourceRegistry()) {

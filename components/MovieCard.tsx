@@ -32,12 +32,12 @@ export function MovieCard({
 }) {
   const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
   const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
-  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, "thumb-mobile") : "";
-  const imageSrc = posterUrl ? proxiedImage(posterUrl, "poster-mobile") : LOCAL_IMAGE_PLACEHOLDER;
+  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, "mobile") : "";
+  const imageSrc = posterUrl ? proxiedImage(posterUrl, "mobile") : LOCAL_IMAGE_PLACEHOLDER;
   const imageSrcSet = posterUrl
     ? proxiedImageCandidateSrcSet(posterUrl, [
-        { profile: "poster-mobile", width: 360 },
-        { profile: "poster-desktop", width: 560 }
+        { profile: "mobile", width: 360 },
+        { profile: "desktop", width: 560 }
       ])
     : undefined;
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
