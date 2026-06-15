@@ -1,9 +1,13 @@
 import type { APIRoute } from "astro";
 import { imageCacheTtlSeconds, readBinaryCache, writeBinaryCache } from "@/lib/cache";
+import { imageHostErrorBody, imageSourceRegistry, validateImageSourceUrl } from "@/lib/image-source-registry";
 
-const FALLBACK_IMAGE_ROOTS = ["https://img.ophim.live", "https://img.ophim.cc"];
+const FALLBACK_IMAGE_ROOTS = ["https://img.ophim.live", "https://img.ophim.cc", "https://img.ophim1.com"];
 const IMAGE_STALE_WHILE_REVALIDATE_SECONDS = 86400;
 const IMAGE_CACHE_PREFIX = "cf-img-jun-2026-v2";
+const VALIDATION_ERROR_CACHE_CONTROL = "no-store";
+const UPSTREAM_ERROR_CACHE_CONTROL = "public, max-age=300";
+const REDIRECT_LIMIT = 4;
 
 type ImageProfileName =
   | "poster-mobile"
@@ -34,23 +38,14 @@ function cacheLog(message: string, details?: Record<string, unknown>) {
   console.log(`[cache] ${message}`, details || {});
 }
 
-function safeUrl(value: string) {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url;
-  } catch {
-    return null;
-  }
-}
-
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
 function normalizedOriginalUrl(imageUrl: string) {
-  const url = safeUrl(imageUrl);
-  if (!url) return "";
+  const result = validateImageSourceUrl(imageUrl);
+  if (!result.ok) return "";
+  const url = result.url;
   url.protocol = url.protocol.toLowerCase();
   url.hostname = url.hostname.toLowerCase();
   url.hash = "";
@@ -88,12 +83,14 @@ function imageProfile(url: URL): ImageProfile {
 }
 
 function imageCandidates(imageUrl: string) {
-  const url = safeUrl(imageUrl);
-  if (!url) return [];
+  const registry = imageSourceRegistry();
+  const result = validateImageSourceUrl(imageUrl, registry);
+  if (!result.ok) return [];
+  const url = result.url;
 
   const candidates = [url.toString()];
   const fileName = url.pathname.split("/").filter(Boolean).pop();
-  const isOphimImage = /(^|\.)ophim\./i.test(url.hostname) || url.hostname.startsWith("img.");
+  const isOphimImage = registry.allowedSuffixes.some((suffix) => url.hostname.endsWith(suffix)) || registry.allowedHosts.has(url.hostname);
 
   if (isOphimImage && fileName) {
     const existingPath = url.pathname.startsWith("/uploads/movies/")
@@ -114,8 +111,11 @@ async function cacheKey(profile: ImageProfile, normalizedUrl: string) {
 }
 
 function cacheControlHeader() {
-  const ttl = imageCacheTtlSeconds();
-  return `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
+  return successCacheControlHeader();
+}
+
+function successCacheControlHeader() {
+  return `public, max-age=604800, stale-while-revalidate=${IMAGE_STALE_WHILE_REVALIDATE_SECONDS}`;
 }
 
 function imageHeaders(options: {
@@ -174,6 +174,7 @@ async function fetchOptimizedImage(url: string, profile: ImageProfile) {
       "Referer": process.env.OPHIM_BASE_URL || "https://ophim1.com/"
     },
     cache: "no-store",
+    redirect: "manual",
     cf: {
       image: {
         width: profile.width,
@@ -186,21 +187,16 @@ async function fetchOptimizedImage(url: string, profile: ImageProfile) {
   return fetch(url, init);
 }
 
-function placeholderResponse(imageUrl: string, status: number | string, transformStatus = "fallback") {
-  cacheLog("IMAGE_FALLBACK_PLACEHOLDER", { imageUrl, status });
-  return new Response(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540"><rect width="360" height="540" fill="#18181b"/><text x="180" y="270" fill="#71717a" font-family="Arial,sans-serif" font-size="22" text-anchor="middle">No image</text></svg>`,
-    {
-      status: 200,
-      headers: {
-        "Content-Type": "image/svg+xml",
-        "Cache-Control": "no-store",
-        "X-Film-Bluesia-Net-Cache": "FALLBACK",
-        "X-Film-Bluesia-Net-Cache-Type": "image",
-        "X-Film-Bluesia-Net-Image-Transform": transformStatus
-      }
+function jsonErrorResponse(body: Record<string, unknown>, status: number, cacheControl: string) {
+  return Response.json(body, {
+    status,
+    headers: {
+      "Cache-Control": cacheControl,
+      "CDN-Cache-Control": cacheControl,
+      "Cloudflare-CDN-Cache-Control": cacheControl,
+      "X-Film-Bluesia-Net-Cache-Type": "image"
     }
-  );
+  });
 }
 
 async function putEdgeCache(request: Request, response: Response) {
@@ -224,15 +220,74 @@ function originFallbackTooLarge(profile: ImageProfile, contentType: string, byte
   return imageTransformStatus(contentType) === "origin-fallback" && byteLength > profile.maxOriginFallbackBytes;
 }
 
+function redirectedStatus(status: number) {
+  return status >= 300 && status < 400;
+}
+
+async function fetchAllowedImage(candidate: string, profile: ImageProfile) {
+  let current = candidate;
+  const registry = imageSourceRegistry();
+
+  for (let redirects = 0; redirects <= REDIRECT_LIMIT; redirects += 1) {
+    const validation = validateImageSourceUrl(current, registry);
+    if (!validation.ok) {
+      cacheLog("IMAGE_HOST_REJECTED", {
+        host: validation.host,
+        profile: profile.name,
+        sourceOrigin: current,
+        error: validation.error
+      });
+      return { response: null, rejection: validation, finalUrl: current };
+    }
+
+    const response = await fetchOptimizedImage(validation.url.toString(), profile);
+    if (!redirectedStatus(response.status)) {
+      const finalUrl = response.url || validation.url.toString();
+      const finalValidation = validateImageSourceUrl(finalUrl, registry);
+      if (!finalValidation.ok) {
+        cacheLog("IMAGE_HOST_REJECTED", {
+          host: finalValidation.host,
+          profile: profile.name,
+          sourceOrigin: finalUrl,
+          error: finalValidation.error
+        });
+        return { response: null, rejection: finalValidation, finalUrl };
+      }
+      return { response, rejection: null, finalUrl: finalValidation.url.toString() };
+    }
+
+    const location = response.headers.get("location") || "";
+    if (!location) return { response, rejection: null, finalUrl: validation.url.toString() };
+    current = new URL(location, validation.url).toString();
+  }
+
+  return { response: null, rejection: null, finalUrl: current, redirectLimitExceeded: true };
+}
+
+export function upstreamErrorCacheControl(status: number | string) {
+  return typeof status === "number" && status >= 400 ? UPSTREAM_ERROR_CACHE_CONTROL : "no-store";
+}
+
 export const GET: APIRoute = async ({ request, url }) => {
   const rawUrl = url.searchParams.get("url") || "";
-  const imageUrl = decodeURIComponent(rawUrl);
-  const normalizedUrl = normalizedOriginalUrl(imageUrl);
   const profile = imageProfile(url);
+  const imageUrl = rawUrl;
+  const initialValidation = validateImageSourceUrl(imageUrl);
+  if (!initialValidation.ok) {
+    cacheLog("IMAGE_HOST_REJECTED", {
+      host: initialValidation.host,
+      profile: profile.name,
+      sourceOrigin: imageUrl,
+      error: initialValidation.error
+    });
+    return jsonErrorResponse(imageHostErrorBody(initialValidation, profile.name, imageUrl), 400, VALIDATION_ERROR_CACHE_CONTROL);
+  }
+
+  const normalizedUrl = normalizedOriginalUrl(imageUrl);
   const candidates = imageCandidates(normalizedUrl);
 
   if (!normalizedUrl || !candidates.length) {
-    return Response.json({ error: "Invalid image URL" }, { status: 400 });
+    return jsonErrorResponse({ error: "IMAGE_URL_INVALID", profile: profile.name, reason: "Invalid image URL" }, 400, VALIDATION_ERROR_CACHE_CONTROL);
   }
 
   const key = await cacheKey(profile, normalizedUrl);
@@ -280,11 +335,36 @@ export const GET: APIRoute = async ({ request, url }) => {
   for (const candidate of candidates) {
     try {
       cacheLog("IMAGE_ORIGIN_FETCH", { sourceUrl: candidate, profile: profile.name, width: profile.width, quality: profile.quality });
-      const upstream = await fetchOptimizedImage(candidate, profile);
+      const fetched = await fetchAllowedImage(candidate, profile);
+      if (fetched.rejection) {
+        lastStatus = fetched.rejection.error;
+        continue;
+      }
+      if (fetched.redirectLimitExceeded || !fetched.response) {
+        lastStatus = "redirect-limit-exceeded";
+        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, reason: "redirect-limit-exceeded", profile: profile.name });
+        continue;
+      }
+
+      const upstream = fetched.response;
       lastStatus = upstream.status;
       const contentType = usableImageContentType(upstream.headers.get("content-type") || "");
       if (!upstream.ok || !contentType) {
-        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, status: upstream.status, contentType, profile: profile.name });
+        cacheLog("IMAGE_OPTIMIZE_FAIL", { sourceUrl: candidate, status: upstream.status, contentType: upstream.headers.get("content-type") || "", profile: profile.name });
+        continue;
+      }
+
+      const contentLength = Number(upstream.headers.get("content-length") || 0);
+      if (contentLength && originFallbackTooLarge(profile, contentType, contentLength)) {
+        lastStatus = `rejected-large-origin:${contentLength}`;
+        cacheLog("IMAGE_OPTIMIZE_FAIL", {
+          sourceUrl: candidate,
+          reason: "rejected-large-origin-content-length",
+          contentType,
+          profile: profile.name,
+          bytes: contentLength,
+          maxBytes: profile.maxOriginFallbackBytes
+        });
         continue;
       }
 
@@ -306,14 +386,14 @@ export const GET: APIRoute = async ({ request, url }) => {
         continue;
       }
 
-      cacheLog("IMAGE_OPTIMIZE_OK", { sourceUrl: candidate, profile: profile.name, bytes: body.byteLength });
-      const { etag, skipped } = await writeBinaryCache("images", key, body, contentType, candidate);
+      cacheLog("IMAGE_OPTIMIZE_OK", { sourceUrl: fetched.finalUrl, profile: profile.name, bytes: body.byteLength });
+      const { etag, skipped } = await writeBinaryCache("images", key, body, contentType, fetched.finalUrl);
       if (ifNoneMatch && ifNoneMatch.includes(etag)) return notModified(etag);
 
       const response = new Response(body, {
         headers: imageHeaders({
           cacheStatus: skipped ? "BYPASS" : "MISS",
-          sourceUrl: candidate,
+          sourceUrl: fetched.finalUrl,
           profile: profile.name,
           etag,
           contentType,
@@ -328,5 +408,11 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
   }
 
-  return placeholderResponse(imageUrl, lastStatus || "unknown", String(lastStatus).startsWith("rejected-large-origin") ? "rejected-large-origin" : "fallback");
+  const status = typeof lastStatus === "number" && lastStatus >= 400 && lastStatus < 600 ? lastStatus : 502;
+  return jsonErrorResponse({
+    error: "IMAGE_UPSTREAM_UNAVAILABLE",
+    profile: profile.name,
+    status: lastStatus || "unknown",
+    reason: "No allowed upstream image response was available"
+  }, status, upstreamErrorCacheControl(status));
 };

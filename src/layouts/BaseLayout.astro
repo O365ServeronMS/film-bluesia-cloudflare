@@ -55,14 +55,17 @@ const isDev = import.meta.env.DEV;
         const fallbackHref = fallback ? new URL(fallback, window.location.href).href : "";
         if (fallbackHref && image.currentSrc !== fallbackHref && image.src !== fallbackHref) {
           image.dataset.fallbackSrc = "";
+          image.removeAttribute("srcset");
           image.src = fallbackHref;
           return;
         }
 
-        image.hidden = true;
-        const fallbackNode = image.nextElementSibling;
-        if (fallbackNode instanceof HTMLElement && fallbackNode.classList.contains("movie-card-image-fallback")) {
-          fallbackNode.hidden = false;
+        const placeholder = image.dataset.placeholderSrc || "";
+        const placeholderHref = placeholder ? new URL(placeholder, window.location.href).href : "";
+        if (placeholderHref && image.currentSrc !== placeholderHref && image.src !== placeholderHref) {
+          image.dataset.placeholderSrc = "";
+          image.removeAttribute("srcset");
+          image.src = placeholderHref;
         }
       }, true);
 

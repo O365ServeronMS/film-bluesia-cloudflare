@@ -6,6 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "test:image-normalization": "node --no-warnings --experimental-strip-types scripts/test-image-normalization.mjs",
+    "test:image-proxy": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-image-proxy.mjs",
+    "scan:image-hosts": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/scan-ophim-image-hosts.mjs",
     "preview": "astro build && wrangler dev dist/_worker.js/index.js --assets dist",
     "deploy": "astro build && wrangler deploy dist/_worker.js/index.js --assets dist"
   },

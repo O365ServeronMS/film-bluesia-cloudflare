@@ -1,5 +1,13 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-15 Image Source Registry
+
+- `/api/image` validates source image URLs through an Image Source Registry instead of a closed hard-coded host check. The registry keeps known OPhim image hosts and can be extended at runtime with `IMAGE_ALLOWED_HOSTS` for exact hosts and `IMAGE_ALLOWED_HOST_SUFFIXES` for trusted suffixes such as `.ophim.live`.
+- The image proxy still must not become an open proxy. It rejects non-http/https protocols, unknown external hosts, localhost, IP addresses, and private/internal-style hostnames before any origin fetch.
+- Trusted suffixes allow future OPhim CDN host changes under approved domains, for example `img.ophim.live` or another subdomain of `.ophim.live`, without code changes.
+- Unknown hosts return structured JSON with `IMAGE_HOST_NOT_ALLOWED`; validation errors are `no-store`, upstream failures are cacheable for at most 300 seconds, and only successful image responses receive the long image cache policy.
+- Card image fallback remains poster first, then thumb, then a local placeholder. Proxy upstream failures must return error statuses so browser image fallback can run.
+
 ## 2026-06-13 Movie Image Normalization
 
 - Movie image mapping belongs in the data layer, not in `MovieCard` or route templates. `lib/movie-images.ts` owns `normalizeMovieImage()`, `resolveMoviePoster()`, and `normalizePosterUrl()`, and `lib/ophim.ts` must normalize cards through that helper.

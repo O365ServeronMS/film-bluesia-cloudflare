@@ -77,6 +77,15 @@ The endpoint allows only `POST`, returns `401` for missing or invalid tokens, an
 
 The image proxy writes only fixed profile keys to R2. It prefers Cloudflare-transformed WebP when available, but may store a small valid upstream JPEG, PNG, AVIF, or WebP response under the same fixed profile key when transform output is unavailable. Oversized untransformed origin responses are rejected and are not written to R2. Width, quality, format, and legacy `w=`, `q=`, `width=`, or `quality=` params do not create arbitrary R2 objects.
 
+Image source hosts are validated through the Image Source Registry. Known OPhim hosts are allowed by default, and runtime env values can extend them:
+
+```text
+IMAGE_ALLOWED_HOSTS=img.ophim1.com,img.ophim.live,img.ophim.cc
+IMAGE_ALLOWED_HOST_SUFFIXES=.ophim.live,.ophim1.com,.ophim.cc
+```
+
+Validation errors return structured JSON and are not long-cacheable. Upstream `403`, `404`, and `5xx` failures are cacheable for at most 300 seconds. Only successful image responses use the long success policy: `public, max-age=604800, stale-while-revalidate=86400`.
+
 R2 key format:
 
 ```text

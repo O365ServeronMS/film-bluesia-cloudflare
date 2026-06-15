@@ -3,6 +3,8 @@ import type { MovieCard as MovieCardType } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
 import { getDisplayRatings, proxiedImage, proxiedImageCandidateSrcSet } from "@/lib/utils";
 
+const LOCAL_IMAGE_PLACEHOLDER = "/image-placeholder.svg";
+
 function validHttpImage(value?: string) {
   if (!value) return "";
   try {
@@ -31,7 +33,7 @@ export function MovieCard({
   const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
   const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
   const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, "thumb-mobile") : "";
-  const imageSrc = posterUrl ? proxiedImage(posterUrl, "poster-mobile") : "";
+  const imageSrc = posterUrl ? proxiedImage(posterUrl, "poster-mobile") : LOCAL_IMAGE_PLACEHOLDER;
   const imageSrcSet = posterUrl
     ? proxiedImageCandidateSrcSet(posterUrl, [
         { profile: "poster-mobile", width: 360 },
@@ -48,27 +50,19 @@ export function MovieCard({
     <a href={detailHref} className="group block min-w-0">
       <article className="overflow-hidden rounded-2xl bg-card shadow-xl shadow-black/20 ring-1 ring-white/5 transition duration-300 group-hover:-translate-y-1 group-hover:ring-gold/50">
         <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
-          {posterUrl ? (
-            <>
-              <img
-                src={imageSrc}
-                srcSet={imageSrcSet}
-                sizes="(min-width: 640px) 180px, 31vw"
-                alt={movie.name}
-                loading={priority ? "eager" : "lazy"}
-                fetchPriority={priority ? "high" : undefined}
-                decoding="async"
-                data-movie-poster
-                data-fallback-src={fallbackImage || undefined}
-                className={imageClassName}
-              />
-              <div hidden className="movie-card-image-fallback grid h-full place-items-center px-4 text-center text-sm text-zinc-500">
-                No image
-              </div>
-            </>
-          ) : (
-            <div className="grid h-full place-items-center px-4 text-center text-sm text-zinc-500">No image</div>
-          )}
+          <img
+            src={imageSrc}
+            srcSet={imageSrcSet}
+            sizes="(min-width: 640px) 180px, 31vw"
+            alt={movie.name}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : undefined}
+            decoding="async"
+            data-movie-poster
+            data-fallback-src={fallbackImage || undefined}
+            data-placeholder-src={LOCAL_IMAGE_PLACEHOLDER}
+            className={imageClassName}
+          />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
             {displayRatings.length ? (
               <div className="flex flex-col items-start gap-1">

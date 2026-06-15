@@ -46,6 +46,8 @@ type CloudflareRuntime = {
     ADMIN_REFRESH_TOKEN?: string;
     CACHE_REFRESH_TOKEN?: string;
     OPHIM_BASE_URL?: string;
+    IMAGE_ALLOWED_HOSTS?: string;
+    IMAGE_ALLOWED_HOST_SUFFIXES?: string;
     OPHIM_REFRESH_MAX_MOVIES?: string;
     OPHIM_REFRESH_DELAY_MS?: string;
     VSEMBED_EMBED_BASE_URL?: string;
