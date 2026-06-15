@@ -3,6 +3,10 @@
 ## 2026-06-15 Image Source Registry
 
 - `/api/image` validates source image URLs through an Image Source Registry instead of a closed hard-coded host check. The registry keeps known OPhim image hosts and can be extended at runtime with `IMAGE_ALLOWED_HOSTS` for exact hosts and `IMAGE_ALLOWED_HOST_SUFFIXES` for trusted suffixes such as `.ophim.live`.
+- The original image URL from the `url` query param is always candidate `0` and must be attempted before any mirror. Do not silently rewrite `img.ophim.live` to `img.ophim1.com` or older hosts before the original request is tried.
+- Default OPhim mirror candidates are `img.ophim.live` and `img.ophim1.com`. `img.ophim.cc` is not a default allowed host or fallback candidate because it has returned `404 application/json` for valid-looking poster paths; add it only through env after path-level verification.
+- OPhim image cache keys use a stable provider identity for trusted mirrors: `ophim:<pathname>:<profile>:<image-cache-version>`. This prevents R2 lookup from using one mirror while put uses another for the same poster path.
+- Upstream response classification happens before optimization. `404` logs `IMAGE_UPSTREAM_NOT_FOUND`, non-image `200` logs `IMAGE_UPSTREAM_NON_IMAGE`, candidate fetch/redirect/host failures log `IMAGE_ORIGIN_ATTEMPT_FAIL`, and `IMAGE_OPTIMIZE_FAIL` is reserved for failures after a valid `200 image/*` origin response reaches the optimizer.
 - The image proxy still must not become an open proxy. It rejects non-http/https protocols, unknown external hosts, localhost, IP addresses, and private/internal-style hostnames before any origin fetch.
 - Trusted suffixes allow future OPhim CDN host changes under approved domains, for example `img.ophim.live` or another subdomain of `.ophim.live`, without code changes.
 - Unknown hosts return structured JSON with `IMAGE_HOST_NOT_ALLOWED`; validation errors are `no-store`, upstream failures are cacheable for at most 300 seconds, and only successful image responses receive the long image cache policy.

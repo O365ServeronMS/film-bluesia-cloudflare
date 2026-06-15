@@ -63,7 +63,7 @@
 ## Data And Cache Assumptions
 
 - OPhim base URL defaults to `https://ophim1.com` unless `OPHIM_BASE_URL` is set.
-- OPhim image CDN fallback roots are in `lib/ophim.ts` and `src/pages/api/image.ts`.
+- OPhim image CDN fallback roots are in `lib/ophim.ts`, `lib/movie-images.ts`, and `src/pages/api/image.ts`. Image proxy fallback candidates are original URL first, then trusted mirrors only.
 - List/home/taxonomy metadata TTL is 1800 seconds.
 - Search metadata TTL is 0/no-store.
 - Movie detail metadata has long/short TTL based on completed/full status and playable links.
@@ -95,7 +95,8 @@
 - 2026-06-13 follow-up: production image proxy also showed `No image` when Cloudflare did not transform a valid upstream JPEG to WebP. `src/pages/api/image.ts` must accept valid `image/jpeg`, `image/png`, `image/avif`, and `image/webp` origin responses and serve/cache them with the actual content type.
 - Current production verification showed `/cdn-cgi/image` unavailable and Worker `cf.image` returning upstream JPEG for new OPhim images. Keep transform attempts, but prefer poster assets for spotlight/detail backgrounds and avoid eager/high-priority backdrop loads while transform is not guaranteed.
 - Image cache namespace is `cf-img-jun-2026-v2`. Oversized untransformed origin fallbacks are rejected on both R2 read and origin fetch; the edge cache key includes the active prefix plus `reject-large-origin-v1` so old edge `EDGE_HIT` objects are bypassed. Use `X-Film-Bluesia-Net-Image-Transform` to distinguish `transformed`, `origin-fallback`, and `rejected-large-origin`.
-- Image source allowlisting is runtime-configurable through `IMAGE_ALLOWED_HOSTS` and `IMAGE_ALLOWED_HOST_SUFFIXES`. Keep exact OPhim hosts and trusted suffixes such as `.ophim.live`; never allow arbitrary image domains. Run `npm run scan:image-hosts` to report latest OPhim poster/thumb hosts before changing allowlist values.
+- Image source allowlisting is runtime-configurable through `IMAGE_ALLOWED_HOSTS` and `IMAGE_ALLOWED_HOST_SUFFIXES`. Keep exact OPhim hosts and trusted suffixes such as `.ophim.live`; never allow arbitrary image domains. OPhim image hosts may differ across `img.ophim.live`, `img.ophim1.com`, and older `img.ophim.cc`, but mirrors must not be blindly substituted. `img.ophim.cc` is not a default fallback because it can return `404 application/json` for poster paths. Run `npm run scan:image-hosts` to report latest OPhim poster/thumb hosts before changing allowlist values.
+- Image proxy cache keys for trusted OPhim mirrors are stable by path/profile/version (`ophim:<pathname>:<profile>:cf-img-jun-2026-v2`) so lookup and put use the same key even when a later mirror candidate succeeds.
 - `movieDetailFromPayload()` builds `MovieDetail`, episode server data, labels, and optional VSEmbed fallback server.
 - `getHome()` fetches latest, single, series, animation, TV, cinema, and filtered list sections, then builds Smart Spotlight candidates.
 - `getList()` supports quick country/category filters for selected list types.

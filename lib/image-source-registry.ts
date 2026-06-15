@@ -2,13 +2,11 @@ import { runtimeEnv } from "@/lib/runtime-env";
 
 const DEFAULT_ALLOWED_HOSTS = [
   "img.ophim.live",
-  "img.ophim.cc",
   "img.ophim1.com"
 ];
 
 const DEFAULT_ALLOWED_SUFFIXES = [
   ".ophim.live",
-  ".ophim.cc",
   ".ophim1.com"
 ];
 

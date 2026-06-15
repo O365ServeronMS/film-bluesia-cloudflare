@@ -2,7 +2,7 @@ import type { SourceMovie } from "./types";
 
 const CDN_FALLBACKS = [
   "https://img.ophim.live/uploads/movies",
-  "https://img.ophim.cc/uploads/movies"
+  "https://img.ophim1.com/uploads/movies"
 ];
 
 function cdnMovieFolder(cdn?: string) {

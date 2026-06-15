@@ -80,17 +80,21 @@ The image proxy writes only fixed profile keys to R2. It prefers Cloudflare-tran
 Image source hosts are validated through the Image Source Registry. Known OPhim hosts are allowed by default, and runtime env values can extend them:
 
 ```text
-IMAGE_ALLOWED_HOSTS=img.ophim1.com,img.ophim.live,img.ophim.cc
-IMAGE_ALLOWED_HOST_SUFFIXES=.ophim.live,.ophim1.com,.ophim.cc
+IMAGE_ALLOWED_HOSTS=img.ophim1.com,img.ophim.live
+IMAGE_ALLOWED_HOST_SUFFIXES=.ophim.live,.ophim1.com
 ```
+
+`img.ophim.cc` is not a default mirror candidate. Add it only after verifying the requested path returns `200 image/*`; otherwise a `404 application/json` response will be classified as upstream not found/non-image and skipped.
 
 Validation errors return structured JSON and are not long-cacheable. Upstream `403`, `404`, and `5xx` failures are cacheable for at most 300 seconds. Only successful image responses use the long success policy: `public, max-age=604800, stale-while-revalidate=86400`.
 
 R2 key format:
 
 ```text
-cf-img-jun-2026-v2/{profile}/{hash-of-normalized-original-url}.webp
+cf-img-jun-2026-v2/{profile}/{hash-of-cache-identity}.webp
 ```
+
+For trusted OPhim mirrors, the cache identity is stable by provider path, profile, and image cache version: `ophim:<pathname>:<profile>:cf-img-jun-2026-v2`. This keeps lookup and put consistent when `img.ophim.live` falls back to `img.ophim1.com` for the same image path.
 
 Allowed profiles:
 
@@ -101,4 +105,4 @@ Allowed profiles:
 - `thumb-mobile`: 320px, quality 65
 - `thumb-desktop`: 480px, quality 70
 
-New image responses flow through edge cache, then R2, then OPhim origin. The internal edge cache key includes the active R2 prefix and image behavior version so old oversized edge objects are bypassed. Failed, empty, non-image, oversized cached origin, or oversized untransformed origin responses are not written to or served from R2.
+New image responses flow through edge cache, then R2, then OPhim origin validation, then Cloudflare image optimization. The original URL is always attempted first. Failed, empty, non-image, oversized cached origin, or oversized untransformed origin responses are not written to or served from R2.
