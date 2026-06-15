@@ -45,6 +45,8 @@ type CloudflareRuntime = {
     MOVIE_METADATA?: KVNamespace;
     ADMIN_REFRESH_TOKEN?: string;
     CACHE_REFRESH_TOKEN?: string;
+    IMAGE_CACHE_BASE_URL?: string;
+    IMAGE_CACHE_SIGNING_SECRET?: string;
     OPHIM_BASE_URL?: string;
     IMAGE_ALLOWED_HOSTS?: string;
     IMAGE_ALLOWED_HOST_SUFFIXES?: string;

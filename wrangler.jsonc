@@ -40,6 +40,7 @@
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://film.bluesia.net",
     "HTML_CACHE_VERSION": "Jun26-v4",
+    "IMAGE_CACHE_BASE_URL": "https://img.bluesia.net",
     "BLUESIA_IMAGE_TRANSFORM_MODE": "cloudflare-free",
     "IMAGE_CACHE_VERSION": "cf-img-jun-2026-v2",
     "IMAGE_ALLOWED_HOSTS": "img.ophim1.com,img.ophim.live",

@@ -7,6 +7,10 @@ export type SignedImagePair = {
   d: string;
 };
 
+function envString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 async function sha256Hex(text: string) {
   const msgUint8 = new TextEncoder().encode(text);
   const hashBuffer = await globalThis.crypto.subtle.digest("SHA-256", msgUint8);
@@ -39,12 +43,23 @@ export async function buildCachedImageUrl(upstreamUrl: string | undefined, varia
   }
 
   const env = runtimeEnv() as Record<string, unknown> | undefined;
+  const metaEnv = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : undefined;
+  const processEnv = typeof process !== "undefined" ? process.env : undefined;
 
-  const cacheBase = env?.PUBLIC_IMAGE_CACHE_URL || (typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.PUBLIC_IMAGE_CACHE_URL : process?.env?.PUBLIC_IMAGE_CACHE_URL);
-  const secret = env?.IMAGE_CACHE_SIGNING_SECRET || (typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.IMAGE_CACHE_SIGNING_SECRET : process?.env?.IMAGE_CACHE_SIGNING_SECRET);
+  const cacheBase =
+    envString(env?.IMAGE_CACHE_BASE_URL) ||
+    envString(env?.PUBLIC_IMAGE_CACHE_URL) ||
+    envString(metaEnv?.IMAGE_CACHE_BASE_URL) ||
+    envString(metaEnv?.PUBLIC_IMAGE_CACHE_URL) ||
+    envString(processEnv?.IMAGE_CACHE_BASE_URL) ||
+    envString(processEnv?.PUBLIC_IMAGE_CACHE_URL);
+  const secret =
+    envString(env?.IMAGE_CACHE_SIGNING_SECRET) ||
+    envString(metaEnv?.IMAGE_CACHE_SIGNING_SECRET) ||
+    envString(processEnv?.IMAGE_CACHE_SIGNING_SECRET);
 
   if (!cacheBase || !secret) {
-    if (!secret && process?.env?.NODE_ENV !== "production") {
+    if (!secret && processEnv?.NODE_ENV !== "production") {
       console.warn("[image-cache] Missing IMAGE_CACHE_SIGNING_SECRET, falling back to upstream URL");
     }
     return upstreamUrl;
