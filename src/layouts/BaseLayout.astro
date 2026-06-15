@@ -60,6 +60,15 @@ const isDev = import.meta.env.DEV;
           return;
         }
 
+        const original = image.dataset.originalSrc || "";
+        const originalHref = original ? new URL(original, window.location.href).href : "";
+        if (originalHref && image.currentSrc !== originalHref && image.src !== originalHref) {
+          image.dataset.originalSrc = "";
+          image.removeAttribute("srcset");
+          image.src = originalHref;
+          return;
+        }
+
         const placeholder = image.dataset.placeholderSrc || "";
         const placeholderHref = placeholder ? new URL(placeholder, window.location.href).href : "";
         if (placeholderHref && image.currentSrc !== placeholderHref && image.src !== placeholderHref) {

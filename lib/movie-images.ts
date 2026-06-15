@@ -24,8 +24,14 @@ export function normalizePosterUrl(value?: string, cdn?: string) {
       const url = new URL(src);
       const fileName = url.pathname.split("/").filter(Boolean).pop();
       const looksLikeOphimImage = /(^|\.)ophim\./i.test(url.hostname) || url.hostname.startsWith("img.");
-      if (looksLikeOphimImage && fileName && !/\/uploads\/movies\//i.test(url.pathname)) {
-        return `${url.origin}/uploads/movies/${fileName}`;
+      if (looksLikeOphimImage && fileName) {
+        if (url.hostname.includes("ophim") && !["img.ophim.live", "img.ophim1.com"].includes(url.hostname)) {
+          url.hostname = "img.ophim.live";
+        }
+        if (!/\/uploads\/movies\//i.test(url.pathname)) {
+          return `${url.origin}/uploads/movies/${fileName}`;
+        }
+        return url.toString();
       }
     } catch {
       return src;
@@ -36,10 +42,27 @@ export function normalizePosterUrl(value?: string, cdn?: string) {
   const withoutLeadingSlash = src.replace(/^\/+/, "");
   if (/^uploads\/movies\//i.test(withoutLeadingSlash)) {
     const base = (cdn || CDN_FALLBACKS[0]).replace(/\/uploads\/movies\/?$/i, "").replace(/\/$/, "");
-    return `${base}/${withoutLeadingSlash}`;
+    try {
+      const baseUrl = new URL(base);
+      if (baseUrl.hostname.includes("ophim") && !["img.ophim.live", "img.ophim1.com"].includes(baseUrl.hostname)) {
+        baseUrl.hostname = "img.ophim.live";
+      }
+      return `${baseUrl.toString().replace(/\/$/, "")}/${withoutLeadingSlash}`;
+    } catch {
+      return `${base}/${withoutLeadingSlash}`;
+    }
   }
 
-  return `${cdnMovieFolder(cdn)}/${withoutLeadingSlash}`;
+  try {
+    const folder = cdnMovieFolder(cdn);
+    const folderUrl = new URL(folder);
+    if (folderUrl.hostname.includes("ophim") && !["img.ophim.live", "img.ophim1.com"].includes(folderUrl.hostname)) {
+      folderUrl.hostname = "img.ophim.live";
+    }
+    return `${folderUrl.toString().replace(/\/$/, "")}/${withoutLeadingSlash}`;
+  } catch {
+    return `${cdnMovieFolder(cdn)}/${withoutLeadingSlash}`;
+  }
 }
 
 function firstImageValue(...values: Array<string | undefined>) {

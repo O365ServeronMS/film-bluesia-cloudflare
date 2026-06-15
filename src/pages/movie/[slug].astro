@@ -50,7 +50,17 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
             {posterImage && (
               <picture>
                 <source media="(min-width: 640px)" srcset={proxiedImage(posterImage, "poster-desktop")} />
-                <img src={proxiedImage(posterImage, "poster-mobile")} alt={movie.name} class="aspect-[2/3] h-full w-full object-cover" loading="lazy" decoding="async" />
+                <img
+                  src={proxiedImage(posterImage, "poster-mobile")}
+                  alt={movie.name}
+                  class="aspect-[2/3] h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  data-movie-poster
+                  data-fallback-src={posterImage ? proxiedImage(posterImage, "poster-desktop") : undefined}
+                  data-original-src={posterImage || undefined}
+                  data-placeholder-src="/image-placeholder.svg"
+                />
               </picture>
             )}
           </div>

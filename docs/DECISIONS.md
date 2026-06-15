@@ -160,6 +160,16 @@
 - Robots and sitemap files live under `public/`.
 - Need verification: sitemap update/generation process is not evident from inspected files.
 
+## 2026-06-15 Image Resolution & Feature Realignment
+
+- **Oversized Origin Fallbacks**: Relaxed `originFallbackTooLarge` check in `src/pages/api/image.ts` to use `hardOriginBytes` (8MB) rather than `maxOriginFallbackBytes` (700KB/1.2MB). This prevents the image proxy from rejecting large posters (often 1MB-7MB) returned by OPhim, which was causing the "no-image" production issue on free Cloudflare plans that do not support active image resizing/transformation.
+- **Client-Side Original Fallback**: Added `data-original-src` support to `src/layouts/BaseLayout.astro`, `components/MovieCard.tsx`, `components/HeroSlider.tsx`, and `src/pages/movie/[slug].astro`. If the worker proxy fails to cache/retrieve both the poster and the thumbnail, the browser attempts to fetch the original unproxied CDN URL directly before showing the placeholder.
+- **OPhim Hostname Normalization**: Updated `normalizePosterUrl` in `lib/movie-images.ts` to automatically rewrite alternative/legacy subdomains (such as `img.ophim.cc` and `img.ophim.co`) to `img.ophim.live`. This keeps requests consistent with the allowed host list and avoids mirror validation errors.
+- **Project 1 vs Project 2 Boundary**:
+  - *Project 1 (FilmBluesia)*: Runs on Cloudflare Workers/Pages. Uses Cloudflare-native APIs: Cache API, KV-compatible metadata storage, R2 image cache (`IMAGE_CACHE`), and static asset routing via `ASSETS` binding. It does NOT use Node-only filesystem persistence or Vercel/Next.js image cache contracts (`img.bluesia.net`).
+  - *Project 2*: Vercel/Next.js external image cache logic. Keep the boundaries clear and never import or apply Project 2 assumptions here.
+- **Navigation and Tab Persistence**: Navigation flow persists category context (e.g. `phim-le`, `phim-bo`) via the `returnTo` query parameter rather than hash fragments. The back button on `/watch` points to `/movie/[slug]?returnTo=<encoded-list-url>` and detail page back points to the preserved `returnTo` list path. BottomNav tab active state resolves from `returnTo`, fallback pathname, or metadata.
+
 ## Verification
 
 - Run `npm run build` after code or config changes when reasonable.

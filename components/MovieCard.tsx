@@ -60,6 +60,7 @@ export function MovieCard({
             decoding="async"
             data-movie-poster
             data-fallback-src={fallbackImage || undefined}
+            data-original-src={posterUrl || undefined}
             data-placeholder-src={LOCAL_IMAGE_PLACEHOLDER}
             className={imageClassName}
           />

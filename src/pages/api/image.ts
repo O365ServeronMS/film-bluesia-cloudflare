@@ -232,6 +232,7 @@ function jsonErrorResponse(body: Record<string, unknown>, status: number, cacheC
 }
 
 async function putEdgeCache(request: Request, response: Response, details: Record<string, unknown>) {
+  if (typeof caches === "undefined") return;
   try {
     await caches.default.put(request, response.clone());
   } catch (error) {
@@ -249,7 +250,7 @@ function imageTransformStatus(contentType: string) {
 }
 
 function originFallbackTooLarge(profile: ImageProfile, contentType: string, byteLength: number) {
-  return imageTransformStatus(contentType) === "origin-fallback" && byteLength > profile.maxOriginFallbackBytes;
+  return imageTransformStatus(contentType) === "origin-fallback" && byteLength > profile.hardOriginBytes;
 }
 
 function originTooLarge(profile: ImageProfile, byteLength: number) {
@@ -347,7 +348,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     cacheIdentity: identity.startsWith("ophim:") ? "ophim-path" : "url"
   });
 
-  const edgeHit = await caches.default.match(edgeRequest);
+  const edgeHit = typeof caches !== "undefined" ? await caches.default.match(edgeRequest) : null;
   if (edgeHit) {
     cacheLog("IMAGE_CACHE_HIT", { ...requestLog, candidateUrl: candidates[0], cacheLayer: "edge" });
     const hit = new Response(edgeHit.body, edgeHit);

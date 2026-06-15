@@ -221,6 +221,10 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
             loading={visibleIndex === 0 ? "eager" : "lazy"}
             fetchPriority={visibleIndex === 0 ? "high" : "auto"}
             decoding="async"
+            data-movie-poster
+            data-fallback-src={activeImage ? proxiedImage(activeImage, "backdrop-desktop") : undefined}
+            data-original-src={activeImage || undefined}
+            data-placeholder-src="/image-placeholder.svg"
             className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity duration-700"
           />
         )}

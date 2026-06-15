@@ -116,7 +116,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const canUseHtmlCache = ["GET", "HEAD"].includes(context.request.method) &&
     isHtmlRequest(context.request) &&
     Boolean(initialPolicy) &&
-    !bypassRefresh;
+    !bypassRefresh &&
+    typeof caches !== "undefined";
 
   if (canUseHtmlCache) {
     const cached = await caches.default.match(cacheRequest);
@@ -167,7 +168,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response.headers.set("X-Film-Bluesia-Cache", bypassRefresh ? "HTML_CACHE_BYPASS_REFRESH" : "HTML_CACHE_MISS");
     response.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
 
-    if (context.request.method === "GET") {
+    if (context.request.method === "GET" && typeof caches !== "undefined") {
       await caches.default.put(cacheRequest, response.clone());
       cacheEvent("HTML_CACHE_WRITE", { type: "html", url: cacheRequest.url, ttlSeconds: finalPolicy.sharedMaxAge });
     }
