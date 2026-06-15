@@ -153,6 +153,24 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   const active = slides[visibleIndex];
   const activeReturnTo = "/";
   const activeImage = active.poster || active.thumb;
+  const activeSigned = active.poster ? active.posterSigned : active.thumbSigned;
+  
+  let imageSrc = "";
+  let imageSrcSet: string | undefined = undefined;
+  let fallbackSrc: string | undefined = undefined;
+
+  if (activeSigned?.m && activeSigned?.d) {
+    imageSrc = activeSigned.m;
+    imageSrcSet = `${activeSigned.m} 780w, ${activeSigned.d} 1280w`;
+    fallbackSrc = activeSigned.d;
+  } else if (activeImage) {
+    imageSrc = proxiedImage(activeImage, "mobile");
+    imageSrcSet = proxiedImageCandidateSrcSet(activeImage, [
+      { profile: "mobile", width: 780 },
+      { profile: "desktop", width: 1280 }
+    ]);
+    fallbackSrc = proxiedImage(activeImage, "desktop");
+  }
   const displayRating = getDisplayRating(active);
   const isPersonalized = Boolean(personalData && (personalData.favorites.length || personalData.history.length));
   const canNavigate = slides.length > 1;
@@ -211,18 +229,15 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
         {activeImage && (
           <img
             key={`${active.slug}-${activeImage}`}
-            src={proxiedImage(activeImage, "mobile")}
-            srcSet={proxiedImageCandidateSrcSet(activeImage, [
-              { profile: "mobile", width: 780 },
-              { profile: "desktop", width: 1280 }
-            ])}
+            src={imageSrc}
+            srcSet={imageSrcSet}
             sizes="(min-width: 640px) 688px, calc(100vw - 32px)"
             alt={active.name}
             loading={visibleIndex === 0 ? "eager" : "lazy"}
             fetchPriority={visibleIndex === 0 ? "high" : "auto"}
             decoding="async"
             data-movie-poster
-            data-fallback-src={activeImage ? proxiedImage(activeImage, "desktop") : undefined}
+            data-fallback-src={fallbackSrc}
             data-original-src={activeImage || undefined}
             data-placeholder-src="/image-placeholder.svg"
             className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity duration-700"

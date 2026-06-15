@@ -50,7 +50,9 @@ function resolveEmbedUrl(src: string | undefined) {
 const playerEmbed = resolveEmbedUrl(embed);
 const useEmbedPlayer = Boolean(playerEmbed) && (forceEmbed || (mobileUA && !forceHls));
 const title = `Watching - ${movie.originName || movie.name}`;
-const playerPoster = movie.thumb || movie.poster ? proxiedImage(movie.thumb || movie.poster, "desktop") : undefined;
+const signedPlayerPoster = movie.thumbSigned?.d || movie.posterSigned?.d;
+const legacyPlayerPoster = movie.thumb || movie.poster ? proxiedImage(movie.thumb || movie.poster, "desktop") : undefined;
+const playerPoster = signedPlayerPoster || legacyPlayerPoster;
 const navSourceKey = navSourceFromSearchParams(Astro.url.searchParams) || inferNavSourceFromMovie(movie);
 const returnTo = returnToFromSearchParams(Astro.url.searchParams) || fallbackReturnToForSource(navSourceKey);
 const detailHref = hrefWithReturnTo(`/movie/${movie.slug}`, returnTo, navSourceKey);

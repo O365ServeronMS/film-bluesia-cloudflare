@@ -90,6 +90,9 @@ export type ImageProfile =
   | "mobile"
   | "desktop";
 
+/**
+ * @deprecated Use lib/image-cache.ts for external image cache URLs instead.
+ */
 export function proxiedImage(src?: string, profile: ImageProfile = "mobile") {
   if (!src) return "";
   if (src.startsWith("/api/image")) return src;
@@ -104,6 +107,9 @@ export function proxiedImageSrcSet(src: string | undefined, profiles: { profile:
   return profiles.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");
 }
 
+/**
+ * @deprecated Use lib/image-cache.ts for external image cache URLs instead.
+ */
 export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { profile: ImageProfile; width: number }[]) {
   if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
   return candidates.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");

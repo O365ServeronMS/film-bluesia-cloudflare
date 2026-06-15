@@ -34,7 +34,7 @@ export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadePro
       {poster ? (
         <picture>
           <img
-            src={proxiedImage(poster, "desktop")}
+            src={poster?.startsWith("http") || poster?.startsWith("/") ? poster : proxiedImage(poster, "desktop")}
             alt={title}
             className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-30"
             loading="eager"

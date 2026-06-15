@@ -29,6 +29,7 @@ import { buildVsembedServer } from "@/lib/vsembed";
 import { normalizedEpisodeName, normalizedEpisodeSlug } from "@/lib/episodes";
 import { setCacheBypassRefresh } from "@/lib/runtime-env";
 import { normalizeMovieImage } from "@/lib/movie-images";
+import { buildCachedImagePair } from "@/lib/image-cache";
 
 export const IMAGE_CACHE_TTL_SECONDS = 1296000;
 export const LIST_CACHE_TTL_SECONDS = 1800;
@@ -231,7 +232,7 @@ async function fetchMoviePayloadWithInfo(slug: string): Promise<MoviePayloadFetc
     const data = await res.json() as SourceMoviePayload;
     const freshInfo = moviePayloadCacheInfo(data);
     const writeResult = await writeJsonCache(policy.namespace, url, data, url, freshInfo.ttlSeconds, {
-      hashValue: movieDetailFromPayload(data)
+      hashValue: await movieDetailFromPayload(data)
     });
     logCacheEvent(freshInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
       namespace: policy.namespace,
@@ -286,7 +287,7 @@ function visibleListCards(items: MovieCard[]) {
   return items.filter((item) => item.slug && !hiddenListSlugs.has(item.slug));
 }
 
-export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
+export async function normalizeCard(raw: SourceMovie, cdn?: string): Promise<MovieCard> {
   const tmdb = sourceRating(raw?.tmdb || raw?.tmdb_rating || raw?.rating);
   const imdb = sourceRating(raw?.imdb || raw?.imdb_rating);
   const ratingObject = typeof raw?.rating === "object" && raw.rating !== null ? raw.rating : undefined;
@@ -312,6 +313,11 @@ export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
   const categoryName = labelText(raw?.category);
   const countryName = labelText(raw?.country);
   const image = normalizeMovieImage(raw, cdn);
+  
+  const [posterSigned, thumbSigned] = await Promise.all([
+    buildCachedImagePair(image.poster),
+    buildCachedImagePair(image.thumb)
+  ]);
 
   return {
     name: pickName(raw),
@@ -319,6 +325,8 @@ export function normalizeCard(raw: SourceMovie, cdn?: string): MovieCard {
     slug: raw?.slug || raw?._id || raw?.id || "",
     poster: image.poster,
     thumb: image.thumb,
+    posterSigned,
+    thumbSigned,
     year: raw?.year || raw?.publish_year || undefined,
     quality: raw?.quality || raw?.video_quality || raw?.quality_name || undefined,
     lang: raw?.lang || raw?.language || undefined,
@@ -388,9 +396,11 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
   if (countrySlug) titleParts.push(countryLabels[countrySlug]);
   if (categorySlug) titleParts.push(categoryLabels[categorySlug]);
 
+  const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
+
   return {
     title: titleParts.join(" - "),
-    items: visibleListCards(items.map((item) => normalizeCard(item, cdn))),
+    items: visibleListCards(cards),
     page: Number(pagination?.currentPage || safePage),
     totalPages: Number(pagination?.totalPages || pagination?.total_pages || 0) || undefined
   };
@@ -402,9 +412,11 @@ export async function searchMovies(keyword: string, page = 1, limit = 24): Promi
   const payload = await fetchJson<SourceListPayload>(`/v1/api/tim-kiem?keyword=${encodeURIComponent(q)}&page=${page}&limit=${limit}`, 300);
   const { items, cdn, data } = getItems(payload);
   const pagination = data?.params?.pagination || {};
+  const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
+  
   return {
     title: `Tìm kiếm: ${q}`,
-    items: items.map((item) => normalizeCard(item, cdn)).filter((item: MovieCard) => item.slug),
+    items: cards.filter((item: MovieCard) => item.slug),
     page: Number(pagination?.currentPage || page),
     totalPages: Number(pagination?.totalPages || 0) || undefined
   };
@@ -454,10 +466,10 @@ export async function getHome(): Promise<HomePayload> {
   };
 }
 
-function movieDetailFromPayload(payload: SourceMoviePayload): MovieDetail {
+async function movieDetailFromPayload(payload: SourceMoviePayload): Promise<MovieDetail> {
   const movieRaw = payload?.movie || payload?.data?.item || payload?.data?.movie || payload?.data || {};
   const cdn = payload?.APP_DOMAIN_CDN_IMAGE || payload?.data?.APP_DOMAIN_CDN_IMAGE;
-  const base = normalizeCard(movieRaw, cdn);
+  const base = await normalizeCard(movieRaw, cdn);
   const episodesRaw = sourceEpisodeServers(payload);
   const episodes: EpisodeServer[] = Array.isArray(episodesRaw) ? episodesRaw.map((server) => ({
     serverName: "OPhim",
@@ -490,7 +502,7 @@ function movieDetailFromPayload(payload: SourceMoviePayload): MovieDetail {
 }
 
 export async function getMovie(slug: string): Promise<MovieDetail> {
-  return movieDetailFromPayload(await fetchMoviePayload(slug));
+  return await movieDetailFromPayload(await fetchMoviePayload(slug));
 }
 
 export async function refreshOphimMovie(slug: string, options: { force?: boolean } = {}) {
@@ -503,7 +515,7 @@ export async function refreshOphimMovie(slug: string, options: { force?: boolean
 
   try {
     const payloadResult = await fetchMoviePayloadWithInfo(safeSlug);
-    const movie = movieDetailFromPayload(payloadResult.payload);
+    const movie = await movieDetailFromPayload(payloadResult.payload);
     const policy = movieDetailCachePolicy(movie);
     return {
       slug: safeSlug,

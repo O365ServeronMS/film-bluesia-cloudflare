@@ -4,6 +4,8 @@ export type MovieCard = {
   slug: string;
   poster: string;
   thumb: string;
+  posterSigned?: { m: string; d: string };
+  thumbSigned?: { m: string; d: string };
   year?: number | string;
   quality?: string;
   lang?: string;

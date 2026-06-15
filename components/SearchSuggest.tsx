@@ -108,7 +108,7 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
                 >
                   <span className="h-16 w-11 shrink-0 overflow-hidden rounded-md bg-zinc-900">
                     {movie.poster || movie.thumb ? (
-                      <img src={proxiedImage(movie.poster || movie.thumb, "mobile")} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                      <img src={movie.thumbSigned?.m || movie.posterSigned?.m || proxiedImage(movie.poster || movie.thumb, "mobile")} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">

@@ -32,14 +32,27 @@ export function MovieCard({
 }) {
   const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
   const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
-  const fallbackImage = fallbackUrl && fallbackUrl !== posterUrl ? proxiedImage(fallbackUrl, "mobile") : "";
-  const imageSrc = posterUrl ? proxiedImage(posterUrl, "mobile") : LOCAL_IMAGE_PLACEHOLDER;
-  const imageSrcSet = posterUrl
-    ? proxiedImageCandidateSrcSet(posterUrl, [
-        { profile: "mobile", width: 360 },
-        { profile: "desktop", width: 560 }
-      ])
-    : undefined;
+  
+  let fallbackImage = "";
+  if (movie.thumbSigned?.m && movie.thumbSigned.m !== movie.posterSigned?.m) {
+    fallbackImage = movie.thumbSigned.m;
+  } else if (fallbackUrl && fallbackUrl !== posterUrl) {
+    fallbackImage = proxiedImage(fallbackUrl, "mobile");
+  }
+
+  let imageSrc = LOCAL_IMAGE_PLACEHOLDER;
+  let imageSrcSet: string | undefined = undefined;
+
+  if (movie.posterSigned?.m && movie.posterSigned?.d) {
+    imageSrc = movie.posterSigned.m;
+    imageSrcSet = `${movie.posterSigned.m} 360w, ${movie.posterSigned.d} 560w`;
+  } else if (posterUrl) {
+    imageSrc = proxiedImage(posterUrl, "mobile");
+    imageSrcSet = proxiedImageCandidateSrcSet(posterUrl, [
+      { profile: "mobile", width: 360 },
+      { profile: "desktop", width: 560 }
+    ]);
+  }
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
   const displayRatings = getDisplayRatings(movie);
