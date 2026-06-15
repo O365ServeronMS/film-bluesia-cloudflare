@@ -52,7 +52,7 @@
 - `components/SearchSuggest.tsx`: search box and suggestions.
 - `components/LocalMovieActions.tsx`: favorites/history localStorage store and detail-page buttons.
 - `components/StoredMovieGrid.tsx`: favorites/history `MovieCard` grid.
-- `components/HlsVideo.tsx`: HTML5 video player for OPhim direct HLS/m3u8 streams; dynamically imports hls.js for MSE-capable browsers and falls back to native Safari/iOS HLS.
+- `components/HlsVideo.tsx`: HTML5 video player for OPhim direct HLS/m3u8 streams; dynamically imports hls.js for MSE-capable browsers, falls back to native Safari/iOS HLS, and owns the top-right quality selector plus local subtitle upload button.
 - `components/IframePlayerFacade.tsx`: click-to-load iframe embed player facade used by Vidsrc embed URLs.
 - `components/WatchRecorder.tsx`: local history recording on watch pages.
 
@@ -93,7 +93,7 @@
 - Detail/watch hierarchy loops: `rg -n "Xem phim|data-nav-back|/watch/|/movie/|history.back|popstate|pageshow" src components`.
 - Episode selection history: `rg -n "data-watch-episode-link|location.replace|episodeWatchKey|findEpisodeByWatchKey|serverIndex|epKey" src/pages/watch src lib`.
 - Source tab propagation: `rg -n "returnTo|validNavSource|currentReturnTo|data-watch-episode-link|activeKeyFromPath|contextKeyForPath" src/layouts components src/pages`.
-- Video player / HLS: `rg -n "HlsVideo|hls.js|m3u8|IframePlayerFacade|vsembed|Vidsrc" components src lib`.
+- Video player / HLS: `rg -n "HlsVideo|hls.js|m3u8|IframePlayerFacade|vsembed|Vidsrc|subtitle|quality" components src lib`.
 - Video buffering policy: `docs/video-buffering-policy.md` and the Player section in `docs/DECISIONS.md`.
 - Cloudflare Worker/Pages logic: `rg -n "worker|scheduled|createExports|cloudflare|wrangler|adapter|caches.default" src lib astro.config.mjs wrangler.jsonc`.
 - KV/R2/D1/cache logic: `rg -n "KV|MOVIE_METADATA|IMAGE_CACHE|R2|D1|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib docs/CLOUDFLARE_CACHE.md wrangler.jsonc`.

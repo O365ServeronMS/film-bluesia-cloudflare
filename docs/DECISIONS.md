@@ -44,6 +44,14 @@
 - `components/HlsVideo.tsx` must keep `hls.js` as a dynamic import inside the direct watch/player path; do not import it globally.
 - Fatal hls.js errors recover by type: network errors call `startLoad()`, media errors call `recoverMediaError()`, and other fatal errors destroy hls.js before attempting native HLS fallback.
 
+## 2026-06-15 HLS Player Controls
+
+- Main OPhim HLS playback continues to use `hls.js` directly through `components/HlsVideo.tsx`; do not restore ArtPlayer or another heavy player library as the main HLS player.
+- Production player UI must not show an hls.js readiness/debug/status badge, including `Sẵn sàng phát bằng hls.js`.
+- The top player overlay is limited to the quality selector and local subtitle upload button.
+- Quality options are built dynamically from `hls.levels`, deduplicated by height where needed; `Tự động` sets `hls.currentLevel = -1`, and manual levels set `hls.currentLevel` to the selected manifest level index.
+- Keep the yellow local subtitle upload button. It accepts local `.vtt` files directly and converts local `.srt` files to WebVTT before attaching them as subtitles. Future player changes must not remove either the quality selector or the local subtitle upload button.
+
 ## Platform
 
 - The app targets Astro server output with the Cloudflare adapter.
