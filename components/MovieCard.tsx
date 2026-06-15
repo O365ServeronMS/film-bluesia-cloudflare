@@ -1,7 +1,7 @@
 import { Heart, Star } from "lucide-react";
 import type { MovieCard as MovieCardType } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
-import { getDisplayRatings, proxiedImage, proxiedImageCandidateSrcSet } from "@/lib/utils";
+import { getDisplayRating, proxiedImage, proxiedImageCandidateSrcSet } from "@/lib/utils";
 
 const LOCAL_IMAGE_PLACEHOLDER = "/image-placeholder.svg";
 
@@ -55,7 +55,7 @@ export function MovieCard({
   }
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
-  const displayRatings = getDisplayRatings(movie);
+  const displayRating = getDisplayRating(movie);
 
   const detailHref = hrefWithReturnTo(`/movie/${movie.slug}`, returnTo, navSourceKey);
 
@@ -78,13 +78,11 @@ export function MovieCard({
             className={imageClassName}
           />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
-            {displayRatings.length ? (
+            {displayRating ? (
               <div className="flex flex-col items-start gap-1">
-                {displayRatings.map((rating) => (
-                  <span key={rating.label} className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] font-bold text-gold backdrop-blur">
-                    <Star className="h-3 w-3 fill-gold" /> {rating.text}
-                  </span>
-                ))}
+                <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] font-bold text-gold backdrop-blur">
+                  <Star className="h-3 w-3 fill-gold" /> {displayRating.text}
+                </span>
               </div>
             ) : (
               <span aria-hidden="true" />

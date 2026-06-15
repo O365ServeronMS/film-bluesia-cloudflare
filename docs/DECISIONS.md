@@ -176,3 +176,7 @@
 - There are currently no lint/test scripts in `package.json`.
 - For cache/runtime changes, also review `docs/CLOUDFLARE_CACHE.md` for documentation drift.
 - Do not fix unrelated worktree changes unless they directly block verification.
+
+## UI Ratings
+
+- Poster card UI displays IMDb rating only; TMDB rating remains fetched/preserved for metadata and internal use.
