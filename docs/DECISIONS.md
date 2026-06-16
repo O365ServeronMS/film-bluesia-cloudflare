@@ -1,5 +1,11 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-16 Shared Image Cache Invariant
+
+- **Decision**: `film.bluesia.net` (Astro) and `phim.bluesia.net` (Next.js) MUST use the exact same external image cache service (`https://img.bluesia.net`). The cache key MUST be derived ONLY from the **normalized upstream image URL** and the **variant** (`m` or `d`).
+- **Reason**: To avoid double image cache generation and save CDN storage, a single upstream poster must generate identical signed URLs on both frontends.
+- **Rejected approach**: The cache key MUST NOT include requester site domain, frontend name, page route, movie slug, or frontend-local width/quality parameters. Site-local image proxies (`/api/image` or `/_next/image`) are explicitly forbidden for active rendering.
+
 ## 2026-06-16 Responsive Image Rendering Pattern
 
 - **Decision**: Responsive image rendering across the application (cards, hero sliders, search suggestions, detail pages) must use both `m` (mobile) and `d` (desktop) signed `img.bluesia.net` URLs via `srcset`/`sizes` or `<picture>` elements. The default/fallback `src` for desktop-capable tags is always the `d` variant.

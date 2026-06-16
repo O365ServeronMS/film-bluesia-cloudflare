@@ -1,24 +1,4 @@
-# Agent Guide
 
-## Project Purpose
-
-- FilmBluesia is an Astro + React movie streaming/catalog app for `film.bluesia.net`.
-- It fetches OPhim metadata, renders movie lists/details/watch pages, proxies images, and runs on Cloudflare through the Astro Cloudflare adapter.
-- Runtime storage is Cloudflare-native: Cache API, KV-compatible metadata storage, R2 image storage, and browser `localStorage` for user state.
-
-## Runtime Assumptions
-
-- Build target is server output for Cloudflare Workers/Pages.
-- Keep Cloudflare compatibility: avoid Node-only runtime APIs unless already supported by the configured adapter/compat flags.
-- Do not add filesystem runtime persistence; Cloudflare runtime does not provide durable local files.
-- Public site URL and cache versioning are configured in `astro.config.mjs`, `src/middleware.ts`, and `wrangler.jsonc`.
-- Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Do not proxy or re-chunk video through Cloudflare Worker. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery. Default buffer should remain conservative; 5-minute buffer is an upper cap for good-network aggressive mode, not the universal default.
-
-## Token-Saving Workflow
-
-- Use `rg` first. Prefer `rg -n "term" src components lib` and `rg --files` over broad file reads.
-- Read only high-signal files relevant to the task. Avoid `node_modules`, `dist`, `.astro`, `.wrangler`, `.vite-cache-build`, and generated/cache folders.
-- Start with `package.json`, `astro.config.mjs`, `wrangler.jsonc`, `tsconfig.json`, then targeted files under `src/`, `components/`, and `lib/`.
 # Agent Guide
 
 ## Project Purpose
@@ -64,6 +44,7 @@
 - OG/meta image tags use the signed desktop variant (`thumbSigned?.d || posterSigned?.d`) with raw upstream fallback.
 - TMDB/OPhim metadata fetching and normalization are unchanged; only the image delivery URLs changed.
 - Responsive image rendering must use both `m` and `d` variants via `srcset` or `<picture>`. The `img` tag's `src` fallback must be the `d` (desktop) variant. Do not hard-code `m` variants for all cards.
+- Shared Image Cache Invariant: Both `film.bluesia.net` and `phim.bluesia.net` must generate exactly the same image cache URL. The cache key MUST be derived ONLY from the normalized upstream image URL and variant (`m` or `d`). It MUST NOT include the requester site domain, frontend name, page route, or any frontend-specific params.
 
 
 ## Verification Rules
