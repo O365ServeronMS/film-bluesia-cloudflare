@@ -86,31 +86,3 @@ export function normalizeEpisodeName(value?: string, index = 0) {
   return clean.toLowerCase().startsWith("tập") ? clean : `Tập ${clean}`;
 }
 
-export type ImageProfile =
-  | "mobile"
-  | "desktop";
-
-/**
- * @deprecated Use lib/image-cache.ts for external image cache URLs instead.
- */
-export function proxiedImage(src?: string, profile: ImageProfile = "mobile") {
-  if (!src) return "";
-  if (src.startsWith("/api/image")) return src;
-  if (src.startsWith("/")) return src;
-  const params = new URLSearchParams({ url: src });
-  params.set("profile", profile);
-  return `/api/image?${params.toString()}`;
-}
-
-export function proxiedImageSrcSet(src: string | undefined, profiles: { profile: ImageProfile; width: number }[]) {
-  if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return profiles.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");
-}
-
-/**
- * @deprecated Use lib/image-cache.ts for external image cache URLs instead.
- */
-export function proxiedImageCandidateSrcSet(src: string | undefined, candidates: { profile: ImageProfile; width: number }[]) {
-  if (!src || src.startsWith("/") || src.startsWith("/api/image")) return undefined;
-  return candidates.map(({ profile, width }) => `${proxiedImage(src, profile)} ${width}w`).join(", ");
-}

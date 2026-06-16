@@ -5,7 +5,7 @@ import { MovieActions } from "@/components/LocalMovieActions";
 import { episodeWatchKey } from "@/lib/episodes";
 import { fallbackReturnToForSource, getBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie, movieDetailCachePolicy } from "@/lib/ophim";
-import { getDisplayRating, proxiedImage, stripHtml } from "@/lib/utils";
+import { getDisplayRating, stripHtml } from "@/lib/utils";
 
 const slug = Astro.params.slug || "";
 const movie = await getMovie(slug);
@@ -18,7 +18,7 @@ const posterImage = movie.poster || movie.thumb;
 const posterSigned = movie.posterSigned || movie.thumbSigned;
 const title = `Bluesia Cinema - ${movie.originName || movie.name}`;
 const description = stripHtml(movie.content) || "Góc nhỏ của người đam mê phim";
-const metaImage = movie.thumb || movie.poster || "/icon-512.png";
+const metaImage = movie.thumbSigned?.d || movie.posterSigned?.d || movie.thumb || movie.poster || "/icon-512.png";
 const displayRating = getDisplayRating(movie);
 const navSourceKey = navSourceFromSearchParams(Astro.url.searchParams) || inferNavSourceFromMovie(movie);
 const returnTo = returnToFromSearchParams(Astro.url.searchParams) || fallbackReturnToForSource(navSourceKey);
@@ -31,9 +31,10 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
     <section class="relative min-h-[560px] overflow-hidden">
       {heroImage && (
         <picture>
-          <source media="(min-width: 640px)" srcset={heroSigned ? heroSigned.d : proxiedImage(heroImage, "desktop")} />
+          <source media="(max-width: 767px)" srcset={heroSigned?.m || heroImage} />
+          <source media="(min-width: 768px)" srcset={heroSigned?.d || heroImage} />
           <img
-            src={heroSigned ? heroSigned.m : proxiedImage(heroImage, "mobile")}
+            src={heroSigned?.d || heroImage}
             alt={movie.name}
             class="absolute inset-0 h-full w-full object-cover opacity-60"
             fetchpriority="low"
@@ -51,15 +52,16 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
           <div class="w-36 shrink-0 overflow-hidden rounded-3xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
             {posterImage && (
               <picture>
-                <source media="(min-width: 640px)" srcset={posterSigned ? posterSigned.d : proxiedImage(posterImage, "desktop")} />
+                <source media="(max-width: 767px)" srcset={posterSigned?.m || posterImage} />
+                <source media="(min-width: 768px)" srcset={posterSigned?.d || posterImage} />
                 <img
-                  src={posterSigned ? posterSigned.m : proxiedImage(posterImage, "mobile")}
+                  src={posterSigned?.d || posterImage}
                   alt={movie.name}
                   class="aspect-[2/3] h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
                   data-movie-poster
-                  data-fallback-src={posterSigned ? posterSigned.d : (posterImage ? proxiedImage(posterImage, "desktop") : undefined)}
+                  data-fallback-src={posterSigned?.d || posterImage || undefined}
                   data-original-src={posterImage || undefined}
                   data-placeholder-src="/image-placeholder.svg"
                 />

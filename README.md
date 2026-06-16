@@ -6,7 +6,8 @@ A minimal, high-performance movie catalog and streaming application built with A
 
 - **Astro + React**: Blazing fast server-side and client-side rendering.
 - **Upstream Integration**: Fetches metadata and streams from OPhim.
-- **Image Proxy**: Uses a shared external image cache (`img.bluesia.net`) to proxy, sign, and cache external poster images safely.
+- **Image Delivery**: Uses a shared external image cache (`img.bluesia.net`) with HMAC-signed URLs for poster/backdrop images. Requires `PUBLIC_IMAGE_CACHE_URL` and `IMAGE_CACHE_SIGNING_SECRET` environment variables. See [Architectural Decisions](docs/DECISIONS.md) for details.
+- **Responsive Images**: Uses native HTML `srcset` and `<picture>` tags to deliver optimal mobile (`m`) and desktop (`d`) signed image variants without user-agent detection.
 - **Cloudflare Native**: Designed to run efficiently on Cloudflare Pages/Workers using KV, R2, and Cache API.
 
 ## Getting Started

@@ -19,6 +19,27 @@
 - Use `rg` first. Prefer `rg -n "term" src components lib` and `rg --files` over broad file reads.
 - Read only high-signal files relevant to the task. Avoid `node_modules`, `dist`, `.astro`, `.wrangler`, `.vite-cache-build`, and generated/cache folders.
 - Start with `package.json`, `astro.config.mjs`, `wrangler.jsonc`, `tsconfig.json`, then targeted files under `src/`, `components/`, and `lib/`.
+# Agent Guide
+
+## Project Purpose
+
+- FilmBluesia is an Astro + React movie streaming/catalog app for `film.bluesia.net`.
+- It fetches OPhim metadata, renders movie lists/details/watch pages, proxies images, and runs on Cloudflare through the Astro Cloudflare adapter.
+- Runtime storage is Cloudflare-native: Cache API, KV-compatible metadata storage, R2 image storage, and browser `localStorage` for user state.
+
+## Runtime Assumptions
+
+- Build target is server output for Cloudflare Workers/Pages.
+- Keep Cloudflare compatibility: avoid Node-only runtime APIs unless already supported by the configured adapter/compat flags.
+- Do not add filesystem runtime persistence; Cloudflare runtime does not provide durable local files.
+- Public site URL and cache versioning are configured in `astro.config.mjs`, `src/middleware.ts`, and `wrangler.jsonc`.
+- Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Do not proxy or re-chunk video through Cloudflare Worker. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery. Default buffer should remain conservative; 5-minute buffer is an upper cap for good-network aggressive mode, not the universal default.
+
+## Token-Saving Workflow
+
+- Use `rg` first. Prefer `rg -n "term" src components lib` and `rg --files` over broad file reads.
+- Read only high-signal files relevant to the task. Avoid `node_modules`, `dist`, `.astro`, `.wrangler`, `.vite-cache-build`, and generated/cache folders.
+- Start with `package.json`, `astro.config.mjs`, `wrangler.jsonc`, `tsconfig.json`, then targeted files under `src/`, `components/`, and `lib/`.
 - Check `docs/FILE_MAP.md` before scanning for common UI, cache, player, and routing tasks.
 
 ## Editing Rules
@@ -31,6 +52,19 @@
 - Do not commit secrets, account IDs, tokens, or private deployment details.
 - Navigation policy: never generate new category context links with hash fragments. Use `returnTo=<encoded path+search>` for `/movie` and `/watch` navigation so the exact source page can be restored. Hash and `from` fallback may exist only for legacy cached links. `/movie` and `/watch` pages must preserve category context for bottom nav active state.
 - Navigation policy: category context for `/movie` and `/watch` pages must be passed with the `returnTo` query param, not hash fragments. Hash fragments are unavailable during Astro/server/static render. Bottom nav active state should use pathname plus `returnTo` and optional movie category fallback. Do not change Cloudflare/cache/video logic for nav active-state fixes.
+
+## Image Cache Contract
+
+- Active poster/backdrop rendering must use the external signed image cache at `img.bluesia.net` via `lib/image-cache.ts`.
+- The legacy `/api/image` endpoint and `proxiedImage()` helper are deleted and must not be re-introduced for active rendering.
+- Only two image variants are allowed: `m` (mobile) and `d` (desktop). Do not send width, quality, profile, DPR, format, or AVIF parameters from frontend code.
+- HMAC signing secret (`IMAGE_CACHE_SIGNING_SECRET`) must stay server-side only. Never use a `PUBLIC_` prefix or expose it to client/browser code.
+- `lib/image-cache.ts` is the canonical helper for building signed image URLs. Use `buildCachedImageUrl()` or `buildCachedImagePair()` from there.
+- When signed URLs are unavailable (missing env vars), components fall back to raw upstream URLs, not to a proxy endpoint.
+- OG/meta image tags use the signed desktop variant (`thumbSigned?.d || posterSigned?.d`) with raw upstream fallback.
+- TMDB/OPhim metadata fetching and normalization are unchanged; only the image delivery URLs changed.
+- Responsive image rendering must use both `m` and `d` variants via `srcset` or `<picture>`. The `img` tag's `src` fallback must be the `d` (desktop) variant. Do not hard-code `m` variants for all cards.
+
 
 ## Verification Rules
 

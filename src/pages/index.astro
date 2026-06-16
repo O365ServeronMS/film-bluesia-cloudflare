@@ -5,7 +5,6 @@ import { SectionRow } from "@/components/SectionRow";
 import { TopBar } from "@/components/TopBar";
 import { createReturnToPath } from "@/lib/navigation";
 import { getHome } from "@/lib/ophim";
-import { proxiedImageCandidateSrcSet } from "@/lib/utils";
 
 const home = await getHome();
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);

@@ -1,5 +1,22 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-16 Responsive Image Rendering Pattern
+
+- **Decision**: Responsive image rendering across the application (cards, hero sliders, search suggestions, detail pages) must use both `m` (mobile) and `d` (desktop) signed `img.bluesia.net` URLs via `srcset`/`sizes` or `<picture>` elements. The default/fallback `src` for desktop-capable tags is always the `d` variant.
+- **Reason**: Hard-coding the `m` variant as the default `src` caused desktop browsers to fetch and display blurry low-resolution posters, and led to suboptimal cache behavior. Using native responsive HTML attributes allows the browser to correctly pick the resolution without relying on server-side user-agent parsing.
+- **Rejected approach**: Do not hard-code the `m` variant for all generic cards. Do not use user-agent detection to switch variants. Do not default to `m` as the fallback `src`.
+
+## 2026-06-16 External Signed Image Cache for Active Rendering
+
+- **Decision**: Project 1 (FilmBluesia Astro) uses the external signed image cache at `img.bluesia.net` for all active poster/backdrop rendering. The legacy `/api/image` proxy endpoint and all `proxiedImage()` fallback branches have been removed.
+- **Reason**: Avoid duplicate image optimization logic between the Worker proxy and VPS cache, align image URL contract with Project 2 (Vercel), reduce inconsistent image URLs in rendered HTML, and simplify the image pipeline to a single delivery path.
+- **Rejected approach**: Do not revive `/api/image?url=...&profile=...` for active rendering. Do not introduce width/quality/DPR/format parameters from the frontend.
+- **What changed**: Deleted `src/pages/api/image.ts` endpoint and `scripts/test-image-proxy.mjs`. Removed `proxiedImage()`, `proxiedImageSrcSet()`, `proxiedImageCandidateSrcSet()`, and `ImageProfile` from `lib/utils.ts`. Removed all `/api/image` fallback branches from `MovieCard.tsx`, `HeroSlider.tsx`, `SearchSuggest.tsx`, `IframePlayerFacade.tsx`, `movie/[slug].astro`, `watch/[slug].astro`, and `index.astro`. OG/meta images now use signed desktop variant with raw upstream fallback.
+- **Image URL format**: `https://img.bluesia.net/i/{m|d}/{sha256}.webp?url={encoded-upstream}&sig=v1.{hmac-hex}`
+- **Only variants**: `m` (mobile), `d` (desktop). No other variants, profiles, or parameters.
+- **Env vars**: `PUBLIC_IMAGE_CACHE_URL` (base URL), `IMAGE_CACHE_SIGNING_SECRET` (HMAC key, server-only).
+- **Fallback when env missing**: Components use raw upstream URLs (not a proxy), with client-side error handler cascade in `BaseLayout.astro`.
+
 ## 2026-06-15 Image Source Registry
 
 - `/api/image` validates source image URLs through an Image Source Registry instead of a closed hard-coded host check. The registry keeps known OPhim image hosts and can be extended at runtime with `IMAGE_ALLOWED_HOSTS` for exact hosts and `IMAGE_ALLOWED_HOST_SUFFIXES` for trusted suffixes such as `.ophim.live`.

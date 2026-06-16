@@ -1,12 +1,11 @@
 "use client";
 
-/* Images use the app-owned responsive /api/image proxy rather than the Next image pipeline. */
 import { KeyboardEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Info, Play, Sparkles, Star } from "lucide-react";
 import type { MovieCard } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
 import { baseSpotlightScore, normalizedLabelSet } from "@/lib/spotlight";
-import { getDisplayRating, proxiedImage, proxiedImageCandidateSrcSet } from "@/lib/utils";
+import { getDisplayRating } from "@/lib/utils";
 
 const SLIDE_INTERVAL_MS = 5000;
 const FAV_KEY = "film.bluesia.net:favorites";
@@ -160,16 +159,12 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   let fallbackSrc: string | undefined = undefined;
 
   if (activeSigned?.m && activeSigned?.d) {
-    imageSrc = activeSigned.m;
+    imageSrc = activeSigned.d;
     imageSrcSet = `${activeSigned.m} 780w, ${activeSigned.d} 1280w`;
     fallbackSrc = activeSigned.d;
   } else if (activeImage) {
-    imageSrc = proxiedImage(activeImage, "mobile");
-    imageSrcSet = proxiedImageCandidateSrcSet(activeImage, [
-      { profile: "mobile", width: 780 },
-      { profile: "desktop", width: 1280 }
-    ]);
-    fallbackSrc = proxiedImage(activeImage, "desktop");
+    imageSrc = activeImage;
+    fallbackSrc = activeImage;
   }
   const displayRating = getDisplayRating(active);
   const isPersonalized = Boolean(personalData && (personalData.favorites.length || personalData.history.length));

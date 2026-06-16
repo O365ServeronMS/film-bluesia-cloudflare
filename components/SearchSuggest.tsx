@@ -1,10 +1,8 @@
 "use client";
 
-/* Suggestion thumbnails use the app-owned /api/image proxy. */
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import type { MovieCard } from "@/lib/types";
-import { proxiedImage } from "@/lib/utils";
 
 type SearchSuggestProps = {
   initialQuery?: string;
@@ -108,7 +106,15 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
                 >
                   <span className="h-16 w-11 shrink-0 overflow-hidden rounded-md bg-zinc-900">
                     {movie.poster || movie.thumb ? (
-                      <img src={movie.thumbSigned?.m || movie.posterSigned?.m || proxiedImage(movie.poster || movie.thumb, "mobile")} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                      <img
+                        src={movie.thumbSigned?.d || movie.posterSigned?.d || movie.poster || movie.thumb || ""}
+                        srcSet={(movie.thumbSigned?.m || movie.posterSigned?.m) && (movie.thumbSigned?.d || movie.posterSigned?.d) ? `${movie.thumbSigned?.m || movie.posterSigned?.m} 480w, ${movie.thumbSigned?.d || movie.posterSigned?.d} 960w` : undefined}
+                        sizes="(max-width: 767px) 480px, 960px"
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">

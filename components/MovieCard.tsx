@@ -1,7 +1,7 @@
 import { Heart, Star } from "lucide-react";
 import type { MovieCard as MovieCardType } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
-import { getDisplayRating, proxiedImage, proxiedImageCandidateSrcSet } from "@/lib/utils";
+import { getDisplayRating } from "@/lib/utils";
 
 const LOCAL_IMAGE_PLACEHOLDER = "/image-placeholder.svg";
 
@@ -34,24 +34,20 @@ export function MovieCard({
   const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
   
   let fallbackImage = "";
-  if (movie.thumbSigned?.m && movie.thumbSigned.m !== movie.posterSigned?.m) {
-    fallbackImage = movie.thumbSigned.m;
+  if (movie.thumbSigned?.d && movie.thumbSigned.d !== movie.posterSigned?.d) {
+    fallbackImage = movie.thumbSigned.d;
   } else if (fallbackUrl && fallbackUrl !== posterUrl) {
-    fallbackImage = proxiedImage(fallbackUrl, "mobile");
+    fallbackImage = fallbackUrl;
   }
 
   let imageSrc = LOCAL_IMAGE_PLACEHOLDER;
   let imageSrcSet: string | undefined = undefined;
 
   if (movie.posterSigned?.m && movie.posterSigned?.d) {
-    imageSrc = movie.posterSigned.m;
-    imageSrcSet = `${movie.posterSigned.m} 360w, ${movie.posterSigned.d} 560w`;
+    imageSrc = movie.posterSigned.d;
+    imageSrcSet = `${movie.posterSigned.m} 480w, ${movie.posterSigned.d} 960w`;
   } else if (posterUrl) {
-    imageSrc = proxiedImage(posterUrl, "mobile");
-    imageSrcSet = proxiedImageCandidateSrcSet(posterUrl, [
-      { profile: "mobile", width: 360 },
-      { profile: "desktop", width: 560 }
-    ]);
+    imageSrc = posterUrl;
   }
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
@@ -66,7 +62,7 @@ export function MovieCard({
           <img
             src={imageSrc}
             srcSet={imageSrcSet}
-            sizes="(min-width: 640px) 180px, 31vw"
+            sizes="(max-width: 767px) 480px, 960px"
             alt={movie.name}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : undefined}

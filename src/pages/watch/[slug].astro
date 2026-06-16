@@ -7,7 +7,6 @@ import { WatchRecorder } from "@/components/WatchRecorder";
 import { episodeWatchKey, findEpisodeByWatchKey } from "@/lib/episodes";
 import { fallbackReturnToForSource, getWatchBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie } from "@/lib/ophim";
-import { proxiedImage } from "@/lib/utils";
 
 const vidsrcHosts = new Set(["vsembed.ru", "vsembed.su", "vidsrc-embed.ru", "vidsrc-embed.su", "vidsrcme.su", "vsrc.su"]);
 const slug = Astro.params.slug || "";
@@ -51,8 +50,7 @@ const playerEmbed = resolveEmbedUrl(embed);
 const useEmbedPlayer = Boolean(playerEmbed) && (forceEmbed || (mobileUA && !forceHls));
 const title = `Watching - ${movie.originName || movie.name}`;
 const signedPlayerPoster = movie.thumbSigned?.d || movie.posterSigned?.d;
-const legacyPlayerPoster = movie.thumb || movie.poster ? proxiedImage(movie.thumb || movie.poster, "desktop") : undefined;
-const playerPoster = signedPlayerPoster || legacyPlayerPoster;
+const playerPoster = signedPlayerPoster || movie.thumb || movie.poster || undefined;
 const navSourceKey = navSourceFromSearchParams(Astro.url.searchParams) || inferNavSourceFromMovie(movie);
 const returnTo = returnToFromSearchParams(Astro.url.searchParams) || fallbackReturnToForSource(navSourceKey);
 const detailHref = hrefWithReturnTo(`/movie/${movie.slug}`, returnTo, navSourceKey);
@@ -64,7 +62,7 @@ if (playerEmbed || m3u8) {
 }
 ---
 
-<BaseLayout title={title} description={`Đang xem ${movie.originName || movie.name} trên Bluesia Cinema`} image={movie.thumb || movie.poster || "/icon-512.png"} type="video.movie" navSourceFallback={navSourceKey}>
+<BaseLayout title={title} description={`Đang xem ${movie.originName || movie.name} trên Bluesia Cinema`} image={signedPlayerPoster || movie.thumb || movie.poster || "/icon-512.png"} type="video.movie" navSourceFallback={navSourceKey}>
   <Fragment slot="head">
     <link rel="preconnect" href="https://vsembed.ru" />
     <link rel="preconnect" href="https://vsembed.su" />
