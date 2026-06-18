@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "film-bluesia-cloudflare",
+  "name": "film",
   "main": "dist/_worker.js/index.js",
   "assets": {
     "directory": "./dist",
