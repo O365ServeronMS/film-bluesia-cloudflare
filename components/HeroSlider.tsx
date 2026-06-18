@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Play, Sparkles, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { MovieCard } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
 import { baseSpotlightScore, normalizedLabelSet } from "@/lib/spotlight";
@@ -167,7 +167,6 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
     fallbackSrc = activeImage;
   }
   const displayRating = getDisplayRating(active);
-  const isPersonalized = Boolean(personalData && (personalData.favorites.length || personalData.history.length));
   const canNavigate = slides.length > 1;
 
   function moveSlide(direction: 1 | -1) {
@@ -211,9 +210,9 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   }
 
   return (
-    <section>
+    <section className="bg-obsidian px-4 pb-6 pt-4">
       <div
-        className="relative h-[320px] overflow-hidden bg-obsidian sm:h-[360px]"
+        className="relative overflow-hidden bg-obsidian"
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onTouchStart={handleTouchStart}
@@ -221,32 +220,55 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
         aria-roledescription="carousel"
         aria-label="Smart Spotlight"
       >
-        {activeImage && (
-          <img
-            key={`${active.slug}-${activeImage}`}
-            src={imageSrc}
-            srcSet={imageSrcSet}
-            sizes="(min-width: 640px) 688px, calc(100vw - 32px)"
-            alt={active.name}
-            loading={visibleIndex === 0 ? "eager" : "lazy"}
-            fetchPriority={visibleIndex === 0 ? "high" : "auto"}
-            decoding="async"
-            data-movie-poster
-            data-fallback-src={fallbackSrc}
-            data-original-src={activeImage || undefined}
-            data-placeholder-src="/image-placeholder.svg"
-            className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity duration-700"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-obsidian/90 via-obsidian/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-obsidian/80 via-transparent to-transparent" />
+        <div key={active.slug} className="animate-[fadeIn_0.45s_ease-out]">
+          <div className="relative mx-auto aspect-[2/3] h-[360px] overflow-hidden rounded-lg bg-smoke sm:h-[420px]">
+            {activeImage ? (
+              <img
+                key={`${active.slug}-${activeImage}`}
+                src={imageSrc}
+                srcSet={imageSrcSet}
+                sizes="(min-width: 640px) 280px, 240px"
+                alt={active.name}
+                loading={visibleIndex === 0 ? "eager" : "lazy"}
+                fetchPriority={visibleIndex === 0 ? "high" : "auto"}
+                decoding="async"
+                data-movie-poster
+                data-fallback-src={fallbackSrc}
+                data-original-src={activeImage || undefined}
+                data-placeholder-src="/image-placeholder.svg"
+                className="h-full w-full object-cover"
+              />
+            ) : null}
+          </div>
+
+          <div className="mx-auto flex max-w-[520px] flex-col items-center pt-5 text-center">
+            {displayRating ? (
+              <span className="inline-flex items-center gap-1.5 rounded-[4.5px] bg-[#f5c518] px-2.5 py-1 text-[11px] font-bold leading-none text-black">
+                <span className="font-black tracking-[-0.04em]">IMDb</span>
+                <span>{displayRating.score.toFixed(1)}</span>
+              </span>
+            ) : null}
+            <h1 className="mt-3 line-clamp-2 text-heading-sm font-semibold leading-heading-sm text-snow sm:text-heading">
+              {active.name}
+            </h1>
+            <p className="mt-1 line-clamp-1 text-body text-ash-mist">{active.originName || active.name}</p>
+            <a
+              href={hrefWithReturnTo(`/movie/${active.slug}`, activeReturnTo, "home")}
+              className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-signal-blue px-6 py-3 text-[14px] font-bold uppercase tracking-[0.083em] text-snow transition-colors hover:bg-signal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glacier-beam"
+            >
+              <Play className="h-5 w-5 fill-current" aria-hidden="true" />
+              Phát
+            </a>
+          </div>
+        </div>
+
         {canNavigate && (
           <>
             <button
               type="button"
               aria-label="Spotlight trước"
               onClick={() => moveSlide(-1)}
-              className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
+              className="absolute left-3 top-[190px] z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke text-snow transition-colors hover:bg-signal-blue focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -254,34 +276,14 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
               type="button"
               aria-label="Spotlight tiếp theo"
               onClick={() => moveSlide(1)}
-              className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
+              className="absolute right-3 top-[190px] z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke text-snow transition-colors hover:bg-signal-blue focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
             >
               <ChevronRight className="h-6 w-6" />
             </button>
           </>
         )}
-        <div key={active.slug} className="relative z-10 flex h-full flex-col justify-end px-4 pb-8 pt-5 animate-[fadeIn_0.45s_ease-out]">
-          <div className="mb-3 flex min-h-8 flex-wrap content-end gap-2">
-            <span className="inline-flex items-center gap-1 rounded-[4.5px] bg-signal-blue px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">
-              <Sparkles className="h-3.5 w-3.5" /> {isPersonalized ? "Dành cho bạn" : "Spotlight"}
-            </span>
-            <span className="rounded-[4.5px] bg-snow px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-obsidian">{active.episodeCurrent || "FULL"}</span>
-            {active.quality && <span className="rounded-[4.5px] bg-smoke/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">{active.quality}</span>}
-            {displayRating && (
-              <span className="inline-flex items-center gap-1 rounded-[4.5px] bg-smoke/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">
-                <Star className="h-3.5 w-3.5 fill-current text-snow" /> {displayRating.text}
-              </span>
-            )}
-          </div>
-          <h1 className="line-clamp-2 min-h-[4.5rem] max-w-[82%] text-heading-sm font-bold leading-heading-sm tracking-tight text-snow sm:max-w-[74%]">{active.name}</h1>
-          <p className="mt-1 line-clamp-1 min-h-5 max-w-[86%] text-body text-ash-mist sm:max-w-[78%]">{active.originName || active.name} · {active.year || "N/A"}{active.country ? ` · ${active.country}` : ""}</p>
-          <div className="mt-5 flex items-center gap-3">
-            <a href={hrefWithReturnTo(`/movie/${active.slug}?play=1#player`, activeReturnTo, "home")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-signal-blue px-6 py-3 text-[14px] font-bold uppercase tracking-[0.083em] text-snow transition hover:bg-signal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glacier-beam">
-              <Play className="h-5 w-5 fill-current" aria-hidden="true" />
-              Phát
-            </a>
-          </div>
-          <div className="mt-5 flex items-center justify-center gap-1">
+        {canNavigate ? (
+          <div className="mt-4 flex items-center justify-center gap-1">
             {slides.map((movie, index) => (
               <button
                 key={movie.slug}
@@ -296,7 +298,7 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
               </button>
             ))}
           </div>
-        </div>
+        ) : null}
       </div>
     </section>
   );

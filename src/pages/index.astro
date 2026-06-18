@@ -17,7 +17,7 @@ const heroPreloadSrcSet = firstHeroSigned
 <BaseLayout>
   {heroPreloadSrcSet && (
     <Fragment slot="head">
-      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 688px, calc(100vw - 32px)" />
+      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 280px, 240px" />
     </Fragment>
   )}
   <TopBar client:load />
