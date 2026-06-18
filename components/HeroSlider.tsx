@@ -276,8 +276,9 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
           <h1 className="line-clamp-2 min-h-[4.5rem] max-w-[82%] text-heading-sm font-bold leading-heading-sm tracking-tight text-snow sm:max-w-[74%]">{active.name}</h1>
           <p className="mt-1 line-clamp-1 min-h-5 max-w-[86%] text-body text-ash-mist sm:max-w-[78%]">{active.originName || active.name} · {active.year || "N/A"}{active.country ? ` · ${active.country}` : ""}</p>
           <div className="mt-5 flex items-center gap-3">
-            <a href={hrefWithReturnTo(`/movie/${active.slug}?play=1#player`, activeReturnTo, "home")} aria-label={`Xem phim ${active.name}`} className="grid h-12 w-12 place-items-center rounded-lg bg-signal-blue text-snow transition hover:bg-signal-blue/90">
-              <Play className="ml-1 h-6 w-6 fill-current" />
+            <a href={hrefWithReturnTo(`/movie/${active.slug}?play=1#player`, activeReturnTo, "home")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-signal-blue px-6 py-3 text-[14px] font-bold uppercase tracking-[0.083em] text-snow transition hover:bg-signal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glacier-beam">
+              <Play className="h-5 w-5 fill-current" aria-hidden="true" />
+              Phát
             </a>
           </div>
           <div className="mt-5 flex items-center justify-center gap-1">

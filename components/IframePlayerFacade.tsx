@@ -43,8 +43,8 @@ export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadePro
       ) : null}
       <span className="absolute inset-0 bg-obsidian/80 transition-colors duration-300 group-hover:bg-obsidian/65" />
       <span className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-        <span className="flex h-12 w-20 items-center justify-center rounded-lg bg-signal-blue text-snow transition-transform duration-200 group-hover:scale-105">
-          <Play className="h-6 w-6 fill-current" aria-hidden="true" />
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-signal-blue text-snow transition-transform duration-200 group-hover:scale-105 sm:h-20 sm:w-20">
+          <Play className="ml-1 h-8 w-8 fill-current sm:h-10 sm:w-10" aria-hidden="true" />
         </span>
         <span className="mt-6 flex flex-col items-center gap-2">
           <span className="text-heading-sm font-semibold leading-heading-sm text-snow">Bấm Play để bắt đầu</span>

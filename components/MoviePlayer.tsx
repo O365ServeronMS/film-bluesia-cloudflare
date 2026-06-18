@@ -44,7 +44,7 @@ export function MoviePlayer({
         type="button"
         aria-controls="movie-player"
         aria-expanded={isOpen}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-signal-blue px-5 py-3 text-body font-bold text-snow transition-colors hover:bg-signal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glacier-beam"
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-signal-blue px-6 py-3 text-[14px] font-bold uppercase tracking-[0.083em] text-snow transition-colors hover:bg-signal-blue/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glacier-beam"
         onClick={openPlayer}
       >
         <Play className="h-5 w-5 fill-current" aria-hidden="true" />
