@@ -157,6 +157,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
   const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
   const [selectedQuality, setSelectedQuality] = useState("auto");
   const [localSubtitleUrl, setLocalSubtitleUrl] = useState("");
+  const [isNativeHls, setIsNativeHls] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -170,6 +171,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
     setError("");
     setQualityOptions([]);
     setSelectedQuality("auto");
+    setIsNativeHls(false);
     hlsRef.current = null;
     video.pause();
     video.removeAttribute("src");
@@ -183,6 +185,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
         if (!video || disposed || !canUseNativeHls(video)) return false;
 
         setError("");
+        setIsNativeHls(true);
         video.src = src;
         video.load();
         return true;
@@ -325,8 +328,9 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
       >
         {localSubtitleUrl && <track key={localSubtitleUrl} kind="subtitles" src={localSubtitleUrl} srcLang="vi" label="Phụ đề" default />}
       </video>
-      <div className="pointer-events-none absolute right-4 top-4 z-10 flex items-center gap-4">
-        <div className="pointer-events-auto relative">
+      {!isNativeHls && (
+        <div className="pointer-events-none absolute right-4 top-4 z-10 flex items-center gap-4">
+          <div className="pointer-events-auto relative">
           <select
             aria-label="Chọn chất lượng video"
             className="appearance-none h-[40px] rounded-[8px] border border-[#89868e] bg-[#050409] px-4 pr-10 text-[14px] font-semibold text-[#ffffff] transition-colors hover:bg-[#000000] hover:border-[#ffffff] focus:border-[#3d6a99] outline-none cursor-pointer"
@@ -364,6 +368,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
           }}
         />
       </div>
+      )}
       {error && (
         <div className="absolute inset-0 grid place-items-center bg-black p-6 text-center text-sm text-zinc-400">
           {error}

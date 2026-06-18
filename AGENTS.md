@@ -74,3 +74,10 @@
 ## Pagination Rules
 
 - We use a strict Netflix-style compact window for pagination. See `docs/PAGINATION.md` for the exact algorithm. Do not revert to simple next/prev or endless scroll.
+
+## Player Loading Rules
+
+- **Nguyên tắc tải player (AI Vibe Code):**
+  1. **Desktop & Android**: LUÔN ưu tiên render player nhúng sẵn (iframe/embed) từ API nguồn. Đây là lựa chọn đầu tiên.
+  2. **iOS**: LUÔN ưu tiên sử dụng Native HLS có sẵn của trình duyệt.
+  3. **HLS.js Fallback**: CHỈ dùng `hls.js` làm phương án dự phòng (fallback) cho môi trường có hỗ trợ MSE (Media Source Extensions). Khi dùng, BẮT BUỘC chỉ load bản `hls.light.js` và phải load qua **dynamic import** để không làm block quá trình render và tăng tốc độ tải trang ban đầu.
