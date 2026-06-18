@@ -1,7 +1,44 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 
+type HlsErrorData = {
+  fatal?: boolean;
+  type?: string;
+};
 
+type HlsListener = (event: string, data: any) => void;
 
+type HlsLevel = {
+  bitrate?: number;
+  height?: number;
+  name?: string;
+};
+
+type HlsRuntime = {
+  attachMedia: (media: HTMLMediaElement) => void;
+  currentLevel: number;
+  destroy: () => void;
+  levels: HlsLevel[];
+  loadSource: (source: string) => void;
+  off: (event: string, listener: HlsListener) => void;
+  on: (event: string, listener: HlsListener) => void;
+  recoverMediaError: () => void;
+  startLoad: () => void;
+};
+
+type HlsConstructor = {
+  new (config: Record<string, unknown>): HlsRuntime;
+  ErrorTypes: {
+    MEDIA_ERROR: string;
+    NETWORK_ERROR: string;
+  };
+  Events: {
+    ERROR: string;
+    LEVELS_UPDATED?: string;
+    MANIFEST_PARSED: string;
+  };
+  isSupported: () => boolean;
+};
 type NavigatorWithConnection = Navigator & {
   connection?: {
     effectiveType?: string;
@@ -89,6 +126,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
       }
 
       try {
+        // @ts-ignore
         const { default: Hls } = (await import("hls.js/dist/hls.light.js")) as { default: HlsConstructor };
         if (disposed) return;
 
