@@ -1,5 +1,5 @@
 ---
-import { ArrowLeft, Calendar, Clock, Star, Users } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronDown, Clapperboard, Clock, ListVideo, Star, Users } from "lucide-react";
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { MovieActions } from "@/components/LocalMovieActions";
 import { MoviePlayer } from "@/components/MoviePlayer";
@@ -103,6 +103,19 @@ const movieCard = {
         event.preventDefault();
         window.location.replace(target.toString());
       }, true);
+
+      document.addEventListener("click", (event) => {
+        const button = event.target instanceof Element ? event.target.closest("[data-movie-synopsis-toggle]") : null;
+        if (!(button instanceof HTMLButtonElement)) return;
+        const synopsis = button.closest("[data-movie-synopsis]");
+        if (!(synopsis instanceof HTMLElement)) return;
+
+        const expanded = !synopsis.classList.contains("is-expanded");
+        synopsis.classList.toggle("is-expanded", expanded);
+        button.setAttribute("aria-expanded", String(expanded));
+        const label = button.querySelector("[data-movie-synopsis-label]");
+        if (label) label.textContent = expanded ? "Thu gọn" : "Xem thêm";
+      });
     </script>
   </Fragment>
 
@@ -155,19 +168,9 @@ const movieCard = {
         {movie.countryList?.map((item) => <span class="rounded-[4.5px] bg-snow/5 px-3 py-1.5">{item.name}</span>)}
       </div>
 
-      <h2 class="mt-8 text-heading-sm font-bold text-snow">Nội dung</h2>
-      <p class="mt-3 text-body leading-body-lg text-ash-mist">{stripHtml(movie.content) || "Chưa có mô tả."}</p>
-
-      {movie.actor?.length ? (
-        <div class="mt-6 rounded-lg border border-white/10 bg-smoke p-4">
-          <h3 class="mb-3 inline-flex items-center gap-2 text-body font-bold text-snow"><Users className="h-4 w-4 text-signal-blue" /> Diễn viên</h3>
-          <p class="text-body leading-body-lg text-ash-mist">{movie.actor.slice(0, 12).join(", ")}</p>
-        </div>
-      ) : null}
-
       {movie.episodes.length ? (
         <div class="mt-8">
-          <h2 class="text-heading-sm font-bold text-snow">Tập phim</h2>
+          <h2 class="inline-flex items-center gap-2 text-heading-sm font-bold text-snow"><ListVideo className="h-5 w-5 text-signal-blue" /> Danh sách tập phim</h2>
           <p class="mt-2 text-body text-ash-mist">Chọn tập sẽ cập nhật player phía trên, không tự phát video.</p>
           {movie.episodes.map((episodeServer, episodeServerIndex) => (
             <div class="mt-4 rounded-lg border border-white/10 bg-smoke p-4">
@@ -185,6 +188,34 @@ const movieCard = {
           ))}
         </div>
       ) : null}
+
+      <div class="mt-8 border-t border-white/10 pt-8">
+        <h2 class="text-heading-sm font-bold text-snow">Nội dung phim</h2>
+        <div class="movie-synopsis mt-3" data-movie-synopsis>
+          <p class="movie-synopsis-copy text-body leading-body-lg text-ash-mist">{stripHtml(movie.content) || "Chưa có mô tả."}</p>
+          <button type="button" data-movie-synopsis-toggle aria-expanded="false" class="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-body font-semibold text-glacier-beam transition-colors hover:text-snow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal-blue">
+            <span data-movie-synopsis-label>Xem thêm</span>
+            <ChevronDown className="movie-synopsis-icon h-4 w-4" />
+          </button>
+        </div>
+
+        {(movie.actor?.length || movie.director?.length) ? (
+          <div class="mt-6 grid gap-3 sm:grid-cols-2">
+            {movie.actor?.length ? (
+              <div class="rounded-lg border border-white/10 bg-smoke p-4">
+                <h3 class="mb-3 inline-flex items-center gap-2 text-body font-bold text-snow"><Users className="h-4 w-4 text-signal-blue" /> Diễn viên</h3>
+                <p class="text-body leading-body-lg text-ash-mist">{movie.actor.slice(0, 12).join(", ")}</p>
+              </div>
+            ) : null}
+            {movie.director?.length ? (
+              <div class="rounded-lg border border-white/10 bg-smoke p-4">
+                <h3 class="mb-3 inline-flex items-center gap-2 text-body font-bold text-snow"><Clapperboard className="h-4 w-4 text-signal-blue" /> Đạo diễn</h3>
+                <p class="text-body leading-body-lg text-ash-mist">{movie.director.slice(0, 8).join(", ")}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   </article>
 </BaseLayout>

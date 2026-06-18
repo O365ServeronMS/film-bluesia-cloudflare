@@ -66,6 +66,8 @@
 html {
   scroll-behavior: smooth;
   background: var(--color-obsidian);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -166,6 +168,25 @@ button, input, select, textarea {
 .line-clamp-1 { -webkit-line-clamp: 1; }
 .line-clamp-2 { -webkit-line-clamp: 2; }
 .line-clamp-3 { -webkit-line-clamp: 3; }
+
+.movie-synopsis-copy {
+  margin: 0;
+}
+
+.movie-synopsis:not(.is-expanded) .movie-synopsis-copy {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.movie-synopsis-icon {
+  transition: transform 160ms ease;
+}
+
+.movie-synopsis.is-expanded .movie-synopsis-icon {
+  transform: rotate(180deg);
+}
 
 @keyframes fadeIn {
   from {
