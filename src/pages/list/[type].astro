@@ -41,8 +41,10 @@ const [data, countryPayload, categoryPayload] = await Promise.all([
 ]);
 const countries = normalizeTaxonomy(countryPayload);
 const categories = normalizeTaxonomy(categoryPayload);
-const country = countries.some((item) => item.slug === requestedCountry) ? requestedCountry : "";
-const category = categories.some((item) => item.slug === requestedCategory) ? requestedCategory : "";
+const isQuickCountry = quickCountries.some(c => c.slug === requestedCountry);
+const isQuickCategory = quickCategories.some(c => c.slug === requestedCategory);
+const country = countries.some((item) => item.slug === requestedCountry) || isQuickCountry ? requestedCountry : "";
+const category = categories.some((item) => item.slug === requestedCategory) || isQuickCategory ? requestedCategory : "";
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
 const currentPage = data.page || page;
 const totalPages = data.totalPages;
@@ -53,8 +55,8 @@ const typeTitles: Record<string, string> = {
   "tv-shows": "TV Show",
   "hoat-hinh": "Hoạt hình"
 };
-const activeCountryName = countries.find((item) => item.slug === country)?.name;
-const activeCategoryName = categories.find((item) => item.slug === category)?.name;
+const activeCountryName = countries.find((item) => item.slug === country)?.name || quickCountries.find((c) => c.slug === country)?.label;
+const activeCategoryName = categories.find((item) => item.slug === category)?.name || quickCategories.find((c) => c.slug === category)?.label;
 const displayTitle = [typeTitles[type] || data.title, activeCountryName, activeCategoryName].filter(Boolean).join(" · ");
 
 function listHref(nextPage: number, filters = activeFilters) {
