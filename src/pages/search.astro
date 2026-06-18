@@ -15,8 +15,8 @@ const data = q ? await searchMovies(q, page, 30) : { title: "Tìm kiếm", items
 <BaseLayout title={`${q ? data.title : "Tìm kiếm"} - Bluesia Cinema`}>
   <header class="sticky top-0 z-40 border-b border-white/5 bg-[#07090f]/90 px-4 py-4 backdrop-blur-xl">
     <div class="flex items-center gap-3">
-      <SearchSuggest client:load initialQuery={q} autoFocus />
-      <a href="/" class="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/10 text-zinc-300">
+      <SearchSuggest client:load initialQuery={q} autoFocus={!q} />
+      <a href="/" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/10 bg-white/10 text-zinc-300 transition hover:bg-white/20">
         <X className="h-5 w-5" />
       </a>
     </div>
