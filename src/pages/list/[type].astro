@@ -1,8 +1,8 @@
 ---
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { MovieCard } from "@/components/MovieCard";
 import { TopBar } from "@/components/TopBar";
+import Pagination from "@/components/Pagination.astro";
 import { createReturnToPath } from "@/lib/navigation";
 import { getCategories, getCountries, getList } from "@/lib/ophim";
 import type { SourceLabel } from "@/lib/types";
@@ -46,9 +46,6 @@ const category = categories.some((item) => item.slug === requestedCategory) ? re
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
 const currentPage = data.page || page;
 const totalPages = data.totalPages;
-const groupStart = Math.floor((Math.max(1, currentPage) - 1) / 10) * 10 + 1;
-const groupEnd = totalPages ? Math.min(groupStart + 9, totalPages) : groupStart + 9;
-const pageNumbers = Array.from({ length: Math.max(0, groupEnd - groupStart + 1) }, (_, index) => groupStart + index);
 const activeFilters = { country, category };
 const typeTitles: Record<string, string> = {
   "phim-le": "Phim lẻ",
@@ -94,23 +91,12 @@ function listHref(nextPage: number, filters = activeFilters) {
     ))}
   </section>
 
-  <nav class="px-4 pt-12 pb-8" aria-label="Phân trang">
-    <div class="flex items-center justify-between gap-3">
-      <a href={listHref(Math.max(1, currentPage - 1))} aria-disabled={currentPage <= 1} class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-iron-veil transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40">
-        <ChevronLeft className="h-4 w-4" /> Trang trước
-      </a>
-      <a href={listHref(currentPage + 1)} aria-disabled={totalPages ? currentPage >= totalPages : false} class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-iron-veil transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40">
-        Trang sau <ChevronRight className="h-4 w-4" />
-      </a>
-    </div>
-    <div class="mt-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-      {pageNumbers.map((pageNumber) => (
-        <a href={listHref(pageNumber)} aria-current={pageNumber === currentPage ? "page" : undefined} class={`grid h-10 min-w-[40px] place-items-center rounded-lg px-3 text-[14px] font-semibold tracking-[0.083em] transition ${pageNumber === currentPage ? "bg-signal-blue text-snow" : "bg-transparent text-snow ring-1 ring-inset ring-iron-veil hover:bg-white/5 hover:ring-snow"}`}>
-          {pageNumber}
-        </a>
-      ))}
-    </div>
-  </nav>
+  <Pagination 
+    class="px-4" 
+    currentPage={currentPage} 
+    totalPages={totalPages} 
+    buildUrl={(page) => listHref(page)} 
+  />
 
   {(countries.length || categories.length) ? (
     <section class="mx-4 mt-8 border-t border-white/10 pb-8 pt-6" aria-labelledby="all-filter-tags">
