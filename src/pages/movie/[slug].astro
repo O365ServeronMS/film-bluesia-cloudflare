@@ -1,79 +1,137 @@
 ---
-import { ArrowLeft, Calendar, Clock, Play, Star, Users } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Star, Users } from "lucide-react";
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { MovieActions } from "@/components/LocalMovieActions";
-import { episodeWatchKey } from "@/lib/episodes";
+import { MoviePlayer } from "@/components/MoviePlayer";
+import { episodeWatchKey, findEpisodeByWatchKey } from "@/lib/episodes";
 import { fallbackReturnToForSource, getBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie, movieDetailCachePolicy } from "@/lib/ophim";
+import type { MovieCard } from "@/lib/types";
 import { getDisplayRating, stripHtml } from "@/lib/utils";
 
+const vidsrcHosts = new Set(["vsembed.ru", "vsembed.su", "vidsrc-embed.ru", "vidsrc-embed.su", "vidsrcme.su", "vsrc.su"]);
 const slug = Astro.params.slug || "";
 const movie = await getMovie(slug);
 const movieCache = movieDetailCachePolicy(movie);
 Astro.response.headers.set("X-Film-Bluesia-Movie-Cache-Class", movieCache.cacheClass);
-const firstEp = movie.episodes[0]?.serverData[0];
+
+const requestedServerIndex = Number(Astro.url.searchParams.get("server") || "0");
+const serverIndex = Number.isInteger(requestedServerIndex) && requestedServerIndex >= 0 ? requestedServerIndex : 0;
+const server = movie.episodes[serverIndex] || movie.episodes[0];
+const epKey = Astro.url.searchParams.get("ep") || undefined;
+const episode = findEpisodeByWatchKey(server, epKey);
+const embed = episode?.linkEmbed;
+const m3u8 = episode?.linkM3u8;
+const requestedPlayer = String(Astro.url.searchParams.get("player") || "").toLowerCase();
+const forceEmbed = requestedPlayer === "embed";
+const forceHls = requestedPlayer === "hls";
+const userAgent = Astro.request.headers.get("user-agent") || "";
+const isIos = /iphone|ipad|ipod/i.test(userAgent);
+const mobileUA = /android|iphone|ipad|ipod|mobile|iemobile|opera mini|webos/i.test(userAgent);
+
+function mobileVidsrcHost() {
+  const host = String(process.env.VSEMBED_MOBILE_EMBED_HOST || "vsembed.su").trim().toLowerCase();
+  return vidsrcHosts.has(host) ? host : "vsembed.su";
+}
+
+function resolveEmbedUrl(src: string | undefined) {
+  if (!src) return undefined;
+  try {
+    const url = new URL(src);
+    if (!vidsrcHosts.has(url.hostname)) return src;
+    const mirror = String(Astro.url.searchParams.get("mirror") || "").trim().toLowerCase();
+    if (vidsrcHosts.has(mirror)) url.hostname = mirror;
+    else if (mobileUA) url.hostname = mobileVidsrcHost();
+    url.searchParams.set("autoplay", "0");
+    return url.toString();
+  } catch {
+    return src;
+  }
+}
+
+const playerEmbed = resolveEmbedUrl(embed);
+const preferEmbedPlayer = forceEmbed || (!isIos && !forceHls);
+const useEmbedPlayer = Boolean(playerEmbed) && (preferEmbedPlayer || !m3u8);
+const initialPlayerOpen = Astro.url.searchParams.get("play") === "1";
 const heroImage = movie.poster || movie.thumb;
 const heroSigned = movie.posterSigned || movie.thumbSigned;
 const posterImage = movie.poster || movie.thumb;
 const posterSigned = movie.posterSigned || movie.thumbSigned;
+const playerPoster = movie.thumbSigned?.d || movie.posterSigned?.d || movie.thumb || movie.poster || undefined;
 const title = `Bluesia Cinema - ${movie.originName || movie.name}`;
 const description = stripHtml(movie.content) || "Góc nhỏ của người đam mê phim";
 const metaImage = movie.thumbSigned?.d || movie.posterSigned?.d || movie.thumb || movie.poster || "/icon-512.png";
 const displayRating = getDisplayRating(movie);
 const navSourceKey = navSourceFromSearchParams(Astro.url.searchParams) || inferNavSourceFromMovie(movie);
 const returnTo = returnToFromSearchParams(Astro.url.searchParams) || fallbackReturnToForSource(navSourceKey);
-const primaryWatchHref = hrefWithReturnTo(`/watch/${movie.slug}${firstEp ? `?ep=${encodeURIComponent(episodeWatchKey(firstEp, 0))}` : ""}`, returnTo, navSourceKey);
 const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fallbackPath: "/" });
+const selectedEpisodeLabel = `${displayEpisodeServerName(server?.serverName)} · ${episode?.name || "Tập phim"}`;
+const movieCard = {
+  name: movie.name,
+  originName: movie.originName,
+  slug: movie.slug,
+  poster: movie.poster,
+  thumb: movie.thumb,
+  posterSigned: movie.posterSigned,
+  thumbSigned: movie.thumbSigned,
+  year: movie.year,
+  quality: movie.quality,
+  lang: movie.lang,
+  type: movie.type,
+  status: movie.status,
+  episodeCurrent: movie.episodeCurrent,
+  time: movie.time,
+  imdbRating: movie.imdbRating,
+  tmdbRating: movie.tmdbRating,
+  tmdb: movie.tmdb,
+  imdb: movie.imdb,
+  rating: movie.rating,
+  ratings: movie.ratings,
+  country: movie.country,
+  category: movie.category,
+} satisfies MovieCard;
 ---
 
 <BaseLayout title={title} description={description} image={metaImage} type="video.movie" navSourceFallback={navSourceKey}>
+  <Fragment slot="head">
+    <script is:inline>
+      document.addEventListener("click", (event) => {
+        const link = event.target instanceof Element ? event.target.closest("a[data-movie-episode-link]") : null;
+        if (!(link instanceof HTMLAnchorElement)) return;
+        const target = new URL(link.href, window.location.href);
+        if (target.origin !== window.location.origin || target.pathname !== window.location.pathname) return;
+        event.preventDefault();
+        window.location.replace(target.toString());
+      }, true);
+    </script>
+  </Fragment>
+
   <article>
     <section class="relative min-h-[560px] overflow-hidden">
       {heroImage && (
         <picture>
           <source media="(max-width: 767px)" srcset={heroSigned?.m || heroImage} />
           <source media="(min-width: 768px)" srcset={heroSigned?.d || heroImage} />
-          <img
-            src={heroSigned?.d || heroImage}
-            alt={movie.name}
-            class="absolute inset-0 h-full w-full object-cover opacity-60"
-            fetchpriority="low"
-            loading="lazy"
-            decoding="async"
-          />
+          <img src={heroSigned?.d || heroImage} alt="" class="absolute inset-0 h-full w-full object-cover opacity-60" fetchpriority="low" loading="lazy" decoding="async" />
         </picture>
       )}
       <div class="absolute inset-0 bg-gradient-to-b from-obsidian/30 via-obsidian/80 to-obsidian"></div>
       <div class="relative z-10 px-4 pb-8 pt-5">
-        <a href={backHref} data-nav-back class="grid h-11 w-11 place-items-center rounded-lg bg-obsidian/50 text-snow">
+        <a href={backHref} data-nav-back aria-label="Quay lại danh sách phim" class="grid h-11 w-11 place-items-center rounded-lg bg-obsidian/70 text-snow transition-colors hover:bg-smoke">
           <ArrowLeft className="h-5 w-5" />
         </a>
         <div class="mt-10 flex gap-4">
-          <div class="w-36 shrink-0 overflow-hidden rounded-3xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+          <div class="w-36 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-smoke">
             {posterImage && (
               <picture>
                 <source media="(max-width: 767px)" srcset={posterSigned?.m || posterImage} />
                 <source media="(min-width: 768px)" srcset={posterSigned?.d || posterImage} />
-                <img
-                  src={posterSigned?.d || posterImage}
-                  alt={movie.name}
-                  class="aspect-[2/3] h-full w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                  data-movie-poster
-                  data-fallback-src={posterSigned?.d || posterImage || undefined}
-                  data-original-src={posterImage || undefined}
-                  data-placeholder-src="/image-placeholder.svg"
-                />
+                <img src={posterSigned?.d || posterImage} alt={movie.name} class="aspect-[2/3] h-full w-full object-cover" loading="lazy" decoding="async" data-movie-poster data-fallback-src={posterSigned?.d || posterImage || undefined} data-original-src={posterImage || undefined} data-placeholder-src="/image-placeholder.svg" />
               </picture>
             )}
           </div>
           <div class="min-w-0 flex-1 pt-4">
-            {displayRating && (
-              <div class="mb-3 inline-flex items-center gap-1 rounded-[4.5px] bg-obsidian/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.083em] text-snow">
-                <Star className="h-3.5 w-3.5 fill-current text-snow" /> {displayRating.text}
-              </div>
-            )}
+            {displayRating && <div class="mb-3 inline-flex items-center gap-1 rounded-[4.5px] bg-obsidian/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.083em] text-snow"><Star className="h-3.5 w-3.5 fill-current" /> {displayRating.text}</div>}
             <h1 class="text-heading font-bold leading-heading tracking-tight text-snow">{movie.name}</h1>
             <p class="mt-2 line-clamp-2 text-body text-ash-mist">{movie.originName}</p>
             <div class="mt-4 flex flex-wrap gap-2 text-caption font-semibold uppercase tracking-caption text-iron-veil">
@@ -84,11 +142,9 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
             </div>
           </div>
         </div>
-        <div class="mt-6 grid gap-3">
-          <a href={primaryWatchHref} class="inline-flex items-center justify-center gap-2 rounded-lg bg-signal-blue px-5 py-4 text-body font-bold text-snow transition-colors hover:bg-signal-blue/90">
-            <Play className="h-5 w-5 fill-current" /> Xem phim
-          </a>
-          <MovieActions client:load movie={movie} />
+        <div id="player" class="mt-6 grid gap-3">
+          <MoviePlayer client:load embedSrc={playerEmbed} episodeLabel={selectedEpisodeLabel} hlsSrc={m3u8} initialOpen={initialPlayerOpen} movie={movieCard} poster={playerPoster} title={`${movie.name} - ${episode?.name || "Tập phim"}`} useEmbedPlayer={useEmbedPlayer} />
+          <MovieActions client:load movie={movieCard} />
         </div>
       </div>
     </section>
@@ -103,7 +159,7 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
       <p class="mt-3 text-body leading-body-lg text-ash-mist">{stripHtml(movie.content) || "Chưa có mô tả."}</p>
 
       {movie.actor?.length ? (
-        <div class="mt-6 rounded-lg bg-smoke p-4">
+        <div class="mt-6 rounded-lg border border-white/10 bg-smoke p-4">
           <h3 class="mb-3 inline-flex items-center gap-2 text-body font-bold text-snow"><Users className="h-4 w-4 text-signal-blue" /> Diễn viên</h3>
           <p class="text-body leading-body-lg text-ash-mist">{movie.actor.slice(0, 12).join(", ")}</p>
         </div>
@@ -112,15 +168,18 @@ const backHref = getBackHref(Astro.url.searchParams, { source: navSourceKey, fal
       {movie.episodes.length ? (
         <div class="mt-8">
           <h2 class="text-heading-sm font-bold text-snow">Tập phim</h2>
-          {movie.episodes.map((server, serverIndex) => (
-            <div class="mt-4 rounded-lg bg-smoke p-4">
-              <h3 class="mb-3 text-body font-bold text-snow">{displayEpisodeServerName(server.serverName)}</h3>
+          <p class="mt-2 text-body text-ash-mist">Chọn tập sẽ cập nhật player phía trên, không tự phát video.</p>
+          {movie.episodes.map((episodeServer, episodeServerIndex) => (
+            <div class="mt-4 rounded-lg border border-white/10 bg-smoke p-4">
+              <h3 class="mb-3 text-body font-bold text-snow">{displayEpisodeServerName(episodeServer.serverName)}</h3>
               <div class="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {server.serverData.map((ep, epIndex) => (
-                  <a href={hrefWithReturnTo(`/watch/${movie.slug}?server=${serverIndex}&ep=${encodeURIComponent(episodeWatchKey(ep, epIndex))}`, returnTo, navSourceKey)} class="rounded-[4.5px] bg-obsidian px-3 py-2 text-center text-body font-bold text-snow transition-colors hover:bg-signal-blue">
-                    {ep.name || epIndex + 1}
-                  </a>
-                ))}
+                {episodeServer.serverData.map((item, itemIndex) => {
+                  const itemKey = episodeWatchKey(item, itemIndex);
+                  const activeKey = episode ? episodeWatchKey(episode, server?.serverData.indexOf(episode) ?? 0) : "";
+                  const active = episodeServerIndex === serverIndex && (itemKey === activeKey || (itemIndex === 0 && !epKey));
+                  const episodeHref = hrefWithReturnTo(`/movie/${movie.slug}?server=${episodeServerIndex}&ep=${encodeURIComponent(itemKey)}&play=1#player`, returnTo, navSourceKey);
+                  return <a href={episodeHref} data-movie-episode-link aria-current={active ? "true" : undefined} class={active ? "rounded-[4.5px] bg-signal-blue px-3 py-2 text-center text-body font-bold text-snow" : "rounded-[4.5px] bg-obsidian px-3 py-2 text-center text-body font-bold text-snow transition-colors hover:bg-signal-blue/80"}>{item.name || itemIndex + 1}</a>;
+                })}
               </div>
             </div>
           ))}

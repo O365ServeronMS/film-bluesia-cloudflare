@@ -1,5 +1,14 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-18 Unified Movie Detail And Playback Page
+
+- **Decision**: The primary flow is List/Home -> `/movie/[slug]`. Movie metadata, episode selection, and playback live on the same page; new UI links must not navigate users to `/watch/[slug]`.
+- **Playback gate**: The `Xem phim` action reveals the selected player without autoplay. Embed playback keeps a second explicit Play interaction before the iframe is created. Direct HLS playback renders controls without an autoplay attribute.
+- **Source priority**: Desktop and Android prefer the iframe/embed source. iOS prefers direct native HLS. When embed is unavailable or HLS is explicitly requested, MSE-capable non-iOS browsers use the light hls.js build loaded through a dynamic import; iOS still attempts native HLS before any library path.
+- **Episodes**: Episode links update `/movie/[slug]` with `server`, `ep`, and `play=1`, preserve `returnTo`, and replace same-page episode history so browser Back returns to the source list instead of older episode selections.
+- **Legacy compatibility**: Existing `/watch/[slug]` URLs redirect to the equivalent `/movie/[slug]` player state. The redirect preserves playback selection and safe list context.
+- **Runtime boundary**: Video remains browser-to-upstream. Do not proxy, cache, download, or re-chunk iframe/HLS media through Cloudflare.
+
 ## 2026-06-16 Shared Image Cache Invariant
 
 - **Decision**: `film.bluesia.net` (Astro) and `phim.bluesia.net` (Next.js) MUST use the exact same external image cache service (`https://img.bluesia.net`). The cache key MUST be derived ONLY from the **normalized upstream image URL** and the **variant** (`m` or `d`).
@@ -54,18 +63,18 @@
 
 ## 2026-06-09 Return-To Navigation Context
 
-- Use full returnTo path+search for list → detail → watch navigation. Do not rely on from-only or hash fragments. Do not replace browser history during normal forward navigation.
-- Generated movie detail links carry `returnTo` with the encoded current pathname and search, so paginated and filtered list state is preserved.
-- Detail pages preserve the same `returnTo` in watch and episode links; watch pages preserve it in detail and same-watch episode links.
+- Use full `returnTo` path+search for list → unified movie page navigation. Do not rely on `from` or hash fragments for category context.
+- Generated movie links carry `returnTo` with the encoded current pathname and search, so paginated and filtered list state is preserved.
+- Player and episode links remain on `/movie/[slug]` and preserve the same `returnTo` value.
 - Active bottom-nav context is derived from `returnTo` first, then legacy `from` parsing and movie metadata fallback.
-- Same-watch episode changes may still replace the current watch URL to avoid polluting Back history with episode-to-episode entries; this is separate from normal list -> detail -> watch navigation.
-- In-page back buttons must follow the page hierarchy. On `/watch` pages, back returns to `/movie/[slug]` first while preserving safe `returnTo`; on `/movie` pages, back may use safe `returnTo` to restore the original list/home page. Browser-native Back cannot restore a list page when a detail page is opened in a new tab because the new tab has no previous history entry. Do not create fake history entries for this.
+- Episode changes replace the current unified movie URL so episode-to-episode selections do not pollute browser history.
+- The movie page back control may use safe `returnTo` to restore the original list/home page. Browser-native Back cannot restore a list page when a movie page is opened in a new tab; do not create fake history entries for this.
 
 ## 2026-06-09 Adaptive Client-Side Prefetch
 
 - Added adaptive client-side prefetch in `src/client/adaptivePrefetch.ts`, initialized globally from `src/layouts/BaseLayout.astro`.
 - Navigation habit tracking is localStorage-only under `filmbluesia_nav_stats_v1`; this keeps behavior personal to each browser and avoids server-side tracking, Cloudflare KV writes, or external analytics.
-- Route transitions are recorded as previous normalized route/category -> current normalized route/category counts. Dynamic detail/playback pages normalize to `/movie` and `/watch`; list pages remain distinguishable by `/list/[type]` plus safe category/country filters, excluding noisy pagination.
+- Route transitions are recorded as previous normalized route/category -> current normalized route/category counts. Unified detail/playback pages normalize to `/movie`; legacy `/watch` redirects remain excluded from playback prefetching.
 - Prediction thresholds are intentionally conservative: minimum transitions from the current route is `5`, and the best target must have probability at least `0.45`. Only the single best next route may be considered per page view.
 - Safety limits keep storage small: at most `24` source routes, at most `8` target routes per source, and lowest-count entries are pruned first.
 - Safe prefetch runs only after page load and during idle time with a `setTimeout` fallback. It skips when localStorage/sessionStorage is unavailable, when `navigator.connection.saveData` is true, or on `slow-2g`/`2g` connections.
@@ -76,8 +85,9 @@
 
 ## 2026-06-09 HLS Playback Strategy
 
+- Desktop and Android prefer the iframe/embed source when it exists. iOS prefers direct native HLS; embed remains its fallback when no HLS URL exists.
 - HLS playback is hls.js-first for MSE-capable browsers, with native HLS fallback for iOS/Safari or unsupported MSE cases, to keep desktop browser playback behavior consistent without breaking iOS native playback.
-- `components/HlsVideo.tsx` must keep `hls.js` as a dynamic import inside the direct watch/player path; do not import it globally.
+- `components/HlsVideo.tsx` must keep `hls.js/dist/hls.light.js` as a dynamic import inside the direct player path; do not import hls.js globally or switch back to the full build.
 - Fatal hls.js errors recover by type: network errors call `startLoad()`, media errors call `recoverMediaError()`, and other fatal errors destroy hls.js before attempting native HLS fallback.
 
 ## 2026-06-15 HLS Player Controls
@@ -129,36 +139,34 @@
 
 ## Navigation Hierarchy And Browser Back Behavior
 
-- Category/List -> Detail -> Episode/Watch is the canonical hierarchy.
-- Browser Back must move one hierarchy level up and must never loop Detail <-> Episode/Watch.
-- Browser Back from a movie detail page must return to the exact previous category/tab page, including `/list/phim-le`, `/list/phim-bo`, `/list/tv-shows`, and `/list/hoat-hinh` states with query params.
-- Detail pages must not auto-reopen Episode Selection/Watch on hydration, `pageshow`, `popstate`, or route restoration.
-- Normal category-to-detail and detail-to-watch user navigation should remain normal anchors that preserve browser history; do not use `replaceState` in a way that destroys the previous category/list entry.
-- Active bottom tab/category must be derived from URL/history and must not reset to `Trang chủ` by default during hydration or route restoration.
-- In-page up/back controls from detail or watch may use `data-nav-back` with URL fallbacks so direct-opened detail/watch URLs still work.
-- Navigation hierarchy decision: FilmBluesia uses the hierarchy List/Home tab -> `/movie/[slug]` -> `/watch/[slug]`. The `returnTo` query parameter stores the original list/home destination. It must not always be treated as the immediate back destination. On `/watch` pages, the in-page back button must return to `/movie/[slug]` first while preserving `returnTo`. On `/movie` pages, the in-page back button may use `returnTo` to return to the original list/home page. Do not use fake browser history or `history.replaceState` to force this behavior.
-- Manual check when navigation code changes: open `Phim lẻ`, click a poster, click `Xem phim`, press browser Back to return to Detail, then press browser Back again and verify the URL and active bottom tab return to `Phim lẻ` without a Detail <-> Watch loop or home-tab flash. Repeat for `Trang chủ`, `Phim bộ`, `TV Show`, and `Hoạt hình` if the change touches route derivation.
+- Category/List -> unified `/movie/[slug]` is the canonical hierarchy.
+- `Xem phim` opens the player in place and must not push a new route into browser history.
+- Browser Back from a movie page must return to the exact previous category/tab page, including list filters and pagination in `returnTo`.
+- Episode changes are same-level state changes and use replace navigation; browser Back must not loop through earlier episode selections.
+- Active bottom tab/category is derived from URL context and must not reset to `Trang chủ` during hydration or route restoration.
+- The in-page up/back control uses `data-nav-back` with a safe `returnTo` fallback so direct-opened movie URLs still work.
+- `/watch/[slug]` is legacy redirect compatibility, not a navigation hierarchy level.
+- Manual check: open each main category, open a poster, reveal the player, select several episodes, then press Back once and verify the original category/list URL and active tab are restored.
 
 ## Episode Selection Must Not Pollute Browser History
 
-- Episode changes inside Watch/Episode are same-level state changes, not new hierarchy levels.
+- Episode changes on the unified movie page are same-level state changes, not new hierarchy levels.
 - Selecting episodes must not push a new browser history entry per episode.
-- Back from any selected episode must return to Detail.
 - Use replace navigation or internal state for episode-to-episode changes.
 - Do not use `history.go(-N)`, `setTimeout`, or stack-skipping hacks.
-- Manual check when episode navigation changes: open a series detail, click `Xem phim`, select Episode 3, Episode 5, then Episode 6, press browser Back once, and verify the current page is Detail rather than Episode 5 or Episode 3. Press Back again and verify the original category/list page is restored.
+- Manual check: select Episode 3, Episode 5, then Episode 6 and press Back once; the original category/list page must be restored.
 
 ## Bottom Nav Source Tab Must Persist Across Child Pages
 
 - Navigation policy: category context for `/movie` and `/watch` pages should be carried by `returnTo=<encoded path+search>`, not hash fragments. Hash fragments are unavailable during Astro/server/static render. Bottom nav active state should use pathname plus `returnTo` and optional movie category fallback. Do not change Cloudflare/cache/video logic for nav active-state fixes.
 - The legacy `from` and hash fallback exists only for old cached links after client load. New generated child links must use `returnTo`.
 
-- Detail and Watch/Episode pages are child pages of the source tab/category.
-- Opening Detail from a bottom-nav tab must keep that tab active on Detail and Watch.
-- Active tab must not be derived only from the current pathname because `/movie/...` and `/watch/...` are child routes.
-- Do not default detail/watch pages to `Trang chủ` when source context is unknown; unknown direct child URLs should have no forced source tab.
-- Preserve source context through Detail -> Watch, Watch/Episode episode replacements, and browser Back navigation.
-- Manual check when bottom-nav context changes: open `Trang chủ`, `Phim lẻ`, `Phim bộ`, `TV Show`, and `Hoạt hình`; from each, open Detail and then `Xem phim`, and verify the same source tab remains active on both child pages.
+- Unified movie pages are child pages of the source tab/category; legacy `/watch` redirects preserve that same context.
+- Opening a movie from a bottom-nav tab must keep that tab active while detail, player, and episode states are shown.
+- Active tab must not be derived only from the current pathname because `/movie/...` is a child route.
+- Do not default direct movie pages to `Trang chủ` when source context is unknown; unknown direct child URLs should have no forced source tab.
+- Preserve source context through player reveal, episode replacement, legacy redirects, and browser Back navigation.
+- Manual check: open each main tab, open a movie, reveal the player, and verify the source tab remains active.
 
 ## Player
 
@@ -166,7 +174,7 @@
 - M3U8/HLS chunking is delegated to upstream playlist segments; do not proxy, re-chunk, download, transcode, or store third-party video segments through the Cloudflare Worker.
 - HLS performance tuning belongs in the client player: conservative default buffer, good-network aggressive buffer cap, retry settings, lazy loading, native HLS fallback, and fatal error recovery.
 - Default HLS buffer target should remain 60 seconds. Aggressive mode may target 180 seconds with a 300-second max cap only on good connections; 5-minute buffering is not a universal default.
-- Embed playback uses `IframePlayerFacade.tsx`; watch-page selection logic is in `src/pages/watch/[slug].astro`.
+- Embed playback uses `IframePlayerFacade.tsx`; unified source selection logic is in `src/pages/movie/[slug].astro` and `components/MoviePlayer.tsx`.
 - Preserve mobile/embed fallback behavior unless the task targets player selection.
 
 ## Vidsrc Playback Must Remain Isolated From OPhim Player Changes

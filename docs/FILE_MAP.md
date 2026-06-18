@@ -16,8 +16,8 @@
 - `src/pages/index.astro`: home page; `getHome()`, hero preload, `TopBar`, `HeroSlider`, `SectionRow`.
 - `src/pages/list/[type].astro`: category/list pages; filters, pagination, `MovieCard` grid.
 - `src/pages/search.astro`: search page; `SearchSuggest`, `searchMovies()`, `MovieCard` grid.
-- `src/pages/movie/[slug].astro`: movie detail page; detail metadata, poster, rating, `Xem phim` detail-to-watch link, episode list links, `data-nav-back` detail up-control fallback to `/`.
-- `src/pages/watch/[slug].astro`: watch page; episode/server selection, `data-watch-episode-link` episode selector, same-watch-page `location.replace` handler for episode-to-episode changes, OPhim HLS vs Vidsrc embed player selection, Vidsrc host/mirror/mobile embed URL adjustment, history recorder, `data-nav-back` watch up-control fallback to `/movie/[slug]`.
+- `src/pages/movie/[slug].astro`: unified detail/playback page; metadata, poster, rating, player source selection, non-autoplay `Xem phim` reveal, episode links, and source-list back navigation.
+- `src/pages/watch/[slug].astro`: legacy compatibility redirect to the equivalent `/movie/[slug]` player state.
 - `src/pages/favorites.astro`: local favorites page.
 - `src/pages/history.astro`: local history page.
 - `src/pages/settings.astro`: settings/info page.
@@ -54,7 +54,8 @@
 - `components/StoredMovieGrid.tsx`: favorites/history `MovieCard` grid.
 - `components/HlsVideo.tsx`: HTML5 video player for OPhim direct HLS/m3u8 streams; dynamically imports hls.js for MSE-capable browsers, falls back to native Safari/iOS HLS, and owns the top-right quality selector plus local subtitle upload button.
 - `components/IframePlayerFacade.tsx`: click-to-load iframe embed player facade used by Vidsrc embed URLs.
-- `components/WatchRecorder.tsx`: local history recording on watch pages.
+- `components/MoviePlayer.tsx`: unified player reveal and selected-episode header; mounts iframe/HLS playback only after `Xem phim` is activated.
+- `components/WatchRecorder.tsx`: local history recording after the unified player is opened.
 
 ## Libraries
 
@@ -69,10 +70,10 @@
 
 ## Playback Source Separation
 
-- OPhim player path: `lib/ophim.ts` normalizes OPhim episode `link_m3u8`/`linkM3u8` into `Episode.linkM3u8`; `src/pages/watch/[slug].astro` renders `components/HlsVideo.tsx` for direct m3u8 when embed playback is not selected.
-- Vidsrc source/provider selection: `lib/ophim.ts` calls `buildVsembedServer(movie)` and appends the returned `serverName: "Vidsrc"` server to `movie.episodes`; `src/pages/watch/[slug].astro` selects it through the existing `server` query index.
+- OPhim player path: `lib/ophim.ts` normalizes OPhim episode `link_m3u8`/`linkM3u8` into `Episode.linkM3u8`; `src/pages/movie/[slug].astro` renders `components/HlsVideo.tsx` for direct m3u8 when embed playback is not selected.
+- Vidsrc source/provider selection: `lib/ophim.ts` calls `buildVsembedServer(movie)` and appends the returned `serverName: "Vidsrc"` server to `movie.episodes`; `src/pages/movie/[slug].astro` selects it through the `server` query index.
 - Vidsrc API/embed URL construction: `lib/vsembed.ts` defaults to `https://vsembed.ru` or `VSEMBED_EMBED_BASE_URL`; movie embeds use `/embed/movie?tmdb=...&autoplay=0` or `/embed/movie?imdb=...&autoplay=0`; TV embeds use `/embed/tv?tmdb=...&season=1&episode=...&autoplay=0&autonext=1` or the same with `imdb=...`.
-- Vidsrc route/watch integration: `src/pages/watch/[slug].astro` reads `episode.linkEmbed`, applies allowed host mirror/mobile rewrites for `vsembed.ru`, `vsembed.su`, `vidsrc-embed.ru`, `vidsrc-embed.su`, `vidsrcme.su`, and `vsrc.su`, then renders the embed branch.
+- Vidsrc route integration: `src/pages/movie/[slug].astro` reads `episode.linkEmbed`, applies allowed host mirror/mobile rewrites for `vsembed.ru`, `vsembed.su`, `vidsrc-embed.ru`, `vidsrc-embed.su`, `vidsrcme.su`, and `vsrc.su`, then renders the embed branch.
 - Vidsrc rendering: `components/IframePlayerFacade.tsx` renders the selected embed URL in an `<iframe>` after the user clicks the facade; Vidsrc is not routed through `components/HlsVideo.tsx`.
 
 ## Public Assets And SEO
@@ -90,9 +91,9 @@
 - Rating badges: `rg -n "rating|IMDb|TMDB|getDisplayRating|getDisplayRatings|Star" components lib src`.
 - Navigation: `rg -n "BottomNav|TopBar|nav|CONTEXT_KEY|data-nav-back|pageshow|popstate|hashchange|pathname|SearchSuggest" components src`.
 - Category back/active-tab regressions: check `components/BottomNav.tsx`, `src/layouts/BaseLayout.astro`, `components/MovieCard.tsx`, `src/pages/list/[type].astro`, `src/pages/movie/[slug].astro`, and `src/pages/watch/[slug].astro` before scanning elsewhere.
-- Detail/watch hierarchy loops: `rg -n "Xem phim|data-nav-back|/watch/|/movie/|history.back|popstate|pageshow" src components`.
-- Episode selection history: `rg -n "data-watch-episode-link|location.replace|episodeWatchKey|findEpisodeByWatchKey|serverIndex|epKey" src/pages/watch src lib`.
-- Source tab propagation: `rg -n "returnTo|validNavSource|currentReturnTo|data-watch-episode-link|activeKeyFromPath|contextKeyForPath" src/layouts components src/pages`.
+- Unified detail/player flow: `rg -n "MoviePlayer|Xem phim|data-nav-back|/watch/|/movie/|history.back|popstate|pageshow" src components`.
+- Episode selection history: `rg -n "data-movie-episode-link|location.replace|episodeWatchKey|findEpisodeByWatchKey|serverIndex|epKey" src/pages/movie src lib`.
+- Source tab propagation: `rg -n "returnTo|validNavSource|currentReturnTo|data-movie-episode-link|activeKeyFromPath|contextKeyForPath" src/layouts components src/pages`.
 - Video player / HLS: `rg -n "HlsVideo|hls.js|m3u8|IframePlayerFacade|vsembed|Vidsrc|subtitle|quality" components src lib`.
 - Video buffering policy: `docs/video-buffering-policy.md` and the Player section in `docs/DECISIONS.md`.
 - Cloudflare Worker/Pages logic: `rg -n "worker|scheduled|createExports|cloudflare|wrangler|adapter|caches.default" src lib astro.config.mjs wrangler.jsonc`.

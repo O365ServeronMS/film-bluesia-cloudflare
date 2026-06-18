@@ -4,7 +4,7 @@
 ## Project Purpose
 
 - FilmBluesia is an Astro + React movie streaming/catalog app for `film.bluesia.net`.
-- It fetches OPhim metadata, renders movie lists/details/watch pages, uses signed URLs for the shared external image cache, and runs on Cloudflare through the Astro Cloudflare adapter.
+- It fetches OPhim metadata, renders movie lists and unified detail/playback pages, uses signed URLs for the shared external image cache, and runs on Cloudflare through the Astro Cloudflare adapter.
 - Runtime storage is Cloudflare-native: Cache API, KV-compatible metadata storage, R2 image storage, and browser `localStorage` for user state.
 
 ## Runtime Assumptions
@@ -14,6 +14,7 @@
 - Do not add filesystem runtime persistence; Cloudflare runtime does not provide durable local files.
 - Public site URL and cache versioning are configured in `astro.config.mjs`, `src/middleware.ts`, and `wrangler.jsonc`.
 - Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Do not proxy or re-chunk video through Cloudflare Worker. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery. Default buffer should remain conservative; 5-minute buffer is an upper cap for good-network aggressive mode, not the universal default.
+- Playback source priority: desktop and Android prefer iframe/embed playback; iOS prefers native HLS. MSE fallback must retain the dynamically imported light build at `hls.js/dist/hls.light.js`.
 
 ## Token-Saving Workflow
 
@@ -41,6 +42,7 @@
 - Do not commit secrets, account IDs, tokens, or private deployment details.
 - Navigation policy: never generate new category context links with hash fragments. Use `returnTo=<encoded path+search>` for `/movie` and `/watch` navigation so the exact source page can be restored. Hash and `from` fallback may exist only for legacy cached links. `/movie` and `/watch` pages must preserve category context for bottom nav active state.
 - Navigation policy: category context for `/movie` and `/watch` pages must be passed with the `returnTo` query param, not hash fragments. Hash fragments are unavailable during Astro/server/static render. Bottom nav active state should use pathname plus `returnTo` and optional movie category fallback. Do not change Cloudflare/cache/video logic for nav active-state fixes.
+- Playback navigation policy: new UI links must target `/movie/[slug]`; playback and episode selection live on that page. `/watch/[slug]` is legacy redirect compatibility only. Revealing a player must never autoplay media, and embed iframes load only after a separate Play interaction.
 
 ## Image Cache Contract
 

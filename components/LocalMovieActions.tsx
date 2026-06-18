@@ -85,11 +85,11 @@ export function MovieActions({ movie }: { movie: MovieCard }) {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <button onClick={toggleFavorite} className="flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white ring-1 ring-white/10 transition hover:bg-white/15">
-        {isFavorite ? <Check className="h-5 w-5 text-gold" /> : <Heart className="h-5 w-5" />}
+      <button onClick={toggleFavorite} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/15 bg-smoke px-4 py-3 text-body font-bold text-snow transition-colors hover:border-white/30 hover:bg-white/5">
+        {isFavorite ? <Check className="h-5 w-5 text-signal-blue" /> : <Heart className="h-5 w-5" />}
         {isFavorite ? "Đã lưu" : "Yêu thích"}
       </button>
-      <button onClick={() => addHistory(movie)} className="flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white ring-1 ring-white/10 transition hover:bg-white/15">
+      <button onClick={() => addHistory(movie)} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/15 bg-smoke px-4 py-3 text-body font-bold text-snow transition-colors hover:border-white/30 hover:bg-white/5">
         <Clock3 className="h-5 w-5" />
         Lưu lịch sử
       </button>
