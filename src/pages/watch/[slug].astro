@@ -21,6 +21,7 @@ const requestedPlayer = String(Astro.url.searchParams.get("player") || "").toLow
 const forceEmbed = requestedPlayer === "embed";
 const forceHls = requestedPlayer === "hls";
 const userAgent = Astro.request.headers.get("user-agent") || "";
+const isIos = /iphone|ipad|ipod/i.test(userAgent);
 const mobileUA = /android|iphone|ipad|ipod|mobile|iemobile|opera mini|webos/i.test(userAgent);
 
 function mobileVidsrcHost() {
@@ -47,7 +48,7 @@ function resolveEmbedUrl(src: string | undefined) {
 }
 
 const playerEmbed = resolveEmbedUrl(embed);
-const useEmbedPlayer = Boolean(playerEmbed) && (forceEmbed || (mobileUA && !forceHls));
+const useEmbedPlayer = Boolean(playerEmbed) && (forceEmbed || (!isIos && !forceHls));
 const title = `Watching - ${movie.originName || movie.name}`;
 const signedPlayerPoster = movie.thumbSigned?.d || movie.posterSigned?.d;
 const playerPoster = signedPlayerPoster || movie.thumb || movie.poster || undefined;

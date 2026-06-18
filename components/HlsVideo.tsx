@@ -178,6 +178,7 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
     async function setup() {
       if (!video || disposed) return;
 
+      const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
       const fallbackToNativeHls = () => {
         if (!video || disposed || !canUseNativeHls(video)) return false;
 
@@ -187,8 +188,15 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
         return true;
       };
 
+      if (isIos) {
+        if (!fallbackToNativeHls()) {
+          setError("Trình duyệt không hỗ trợ HLS.");
+        }
+        return;
+      }
+
       try {
-        const { default: Hls } = (await import("hls.js")) as { default: HlsConstructor };
+        const { default: Hls } = (await import("hls.js/dist/hls.light.js")) as { default: HlsConstructor };
         if (disposed) return;
 
         if (!Hls.isSupported()) {
@@ -317,28 +325,33 @@ export function HlsVideo({ src, poster }: { src: string; poster?: string }) {
       >
         {localSubtitleUrl && <track key={localSubtitleUrl} kind="subtitles" src={localSubtitleUrl} srcLang="vi" label="Phụ đề" default />}
       </video>
-      <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-2 sm:right-3 sm:top-3">
-        <select
-          aria-label="Chọn chất lượng video"
-          className="pointer-events-auto h-9 rounded-lg border border-white/15 bg-black/70 px-2 text-xs font-bold text-white shadow-lg outline-none backdrop-blur transition focus:border-gold sm:h-10 sm:px-3"
-          value={selectedQuality}
-          onChange={(event) => handleQualityChange(event.target.value)}
-        >
-          <option value="auto">Tự động</option>
-          {qualityOptions.map((option) => (
-            <option key={option.levelIndex} value={String(option.levelIndex)}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <div className="pointer-events-none absolute right-4 top-4 z-10 flex items-center gap-4">
+        <div className="pointer-events-auto relative">
+          <select
+            aria-label="Chọn chất lượng video"
+            className="appearance-none h-[40px] rounded-[8px] border border-[#89868e] bg-[#050409] px-4 pr-10 text-[14px] font-semibold text-[#ffffff] transition-colors hover:bg-[#000000] hover:border-[#ffffff] focus:border-[#3d6a99] outline-none cursor-pointer"
+            value={selectedQuality}
+            onChange={(event) => handleQualityChange(event.target.value)}
+          >
+            <option value="auto">Tự động</option>
+            {qualityOptions.map((option) => (
+              <option key={option.levelIndex} value={String(option.levelIndex)} className="bg-[#050409] text-[#ffffff]">
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#ffffff]">
+            <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+          </div>
+        </div>
         <button
           type="button"
           aria-label="Tải phụ đề từ thiết bị"
           title="Tải phụ đề từ thiết bị"
-          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-lg bg-gold text-black shadow-lg transition hover:bg-[#ffd75a] focus:outline-none focus:ring-2 focus:ring-gold/70 sm:h-10 sm:w-10"
+          className="pointer-events-auto flex items-center justify-center h-[40px] w-[40px] rounded-[8px] bg-[#3d6a99] text-[#ffffff] transition-colors hover:bg-[#2b4d70] focus:outline-none"
           onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4" strokeWidth={2} />
         </button>
         <input
           ref={fileInputRef}

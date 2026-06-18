@@ -7,8 +7,8 @@ export function SectionRow({ title, href, items, returnTo = "" }: { title: strin
   return (
     <section className="mt-8 px-4">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-black tracking-tight">{title}</h2>
-        <a href={href} className="inline-flex items-center gap-1 text-sm font-medium text-zinc-400 hover:text-gold">
+        <h2 className="text-heading-sm font-bold leading-heading-sm tracking-tight text-snow">{title}</h2>
+        <a href={href} className="inline-flex items-center gap-1 text-body font-medium text-ash-mist transition-colors hover:text-signal-blue">
           Xem tất cả <ChevronRight className="h-4 w-4" />
         </a>
       </div>

@@ -41,15 +41,15 @@ export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadePro
           />
         </picture>
       ) : null}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gold/90 text-black shadow-glow transition duration-300 group-hover:scale-110 group-hover:bg-gold">
-          <Play className="h-6 w-6 fill-black ml-1 transition-transform group-hover:translate-x-0.5" />
+      <div className="absolute inset-0 bg-[#000000] opacity-80 transition-opacity duration-300 group-hover:opacity-60" />
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+        <div className="flex h-12 w-20 items-center justify-center rounded-[8px] bg-[#3d6a99] text-[#ffffff] transition-transform duration-200 group-hover:scale-105">
+          <Play className="h-6 w-6 fill-current" />
         </div>
-        <div className="space-y-1">
-          <span className="text-sm font-black text-white drop-shadow">Bấm để tải và xem phim</span>
-          <p className="text-xs text-zinc-400 max-w-[280px] mx-auto drop-shadow-sm">
-            Nguồn phát video nhúng sẽ được nạp sau khi nhấp chuột.
+        <div className="mt-6 flex flex-col items-center space-y-2">
+          <span className="text-[24px] font-normal tracking-[0.083em] text-[#ffffff] uppercase">Bấm để xem phim</span>
+          <p className="text-[14px] font-normal text-[#b8b6bb] max-w-[320px] mx-auto tracking-wide">
+            Nguồn phát trình duyệt được tối ưu hóa cho Desktop và Android.
           </p>
         </div>
       </div>

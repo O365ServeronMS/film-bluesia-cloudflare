@@ -211,9 +211,9 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   }
 
   return (
-    <section className="px-4 pt-5">
+    <section>
       <div
-        className="relative h-[320px] overflow-hidden rounded-3xl bg-panel shadow-2xl shadow-black/30 ring-1 ring-white/5 sm:h-[360px]"
+        className="relative h-[320px] overflow-hidden bg-obsidian sm:h-[360px]"
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onTouchStart={handleTouchStart}
@@ -238,15 +238,15 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
             className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity duration-700"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-obsidian/90 via-obsidian/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-obsidian/80 via-transparent to-transparent" />
         {canNavigate && (
           <>
             <button
               type="button"
               aria-label="Spotlight trước"
               onClick={() => moveSlide(-1)}
-              className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-gold/80 sm:grid"
+              className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -254,33 +254,33 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
               type="button"
               aria-label="Spotlight tiếp theo"
               onClick={() => moveSlide(1)}
-              className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-gold/80 sm:grid"
+              className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke focus:outline-none focus:ring-2 focus:ring-signal-blue sm:grid"
             >
               <ChevronRight className="h-6 w-6" />
             </button>
           </>
         )}
-        <div key={active.slug} className="relative z-10 flex h-full flex-col justify-end p-5 animate-[fadeIn_0.45s_ease-out]">
+        <div key={active.slug} className="relative z-10 flex h-full flex-col justify-end px-4 pb-8 pt-5 animate-[fadeIn_0.45s_ease-out]">
           <div className="mb-3 flex min-h-8 flex-wrap content-end gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-2.5 py-1 text-xs font-black text-white backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-gold" /> {isPersonalized ? "Dành cho bạn" : "Smart Spotlight"}
+            <span className="inline-flex items-center gap-1 rounded-[4.5px] bg-signal-blue px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">
+              <Sparkles className="h-3.5 w-3.5" /> {isPersonalized ? "Dành cho bạn" : "Spotlight"}
             </span>
-            <span className="rounded-md bg-gold px-2.5 py-1 text-xs font-black text-black">{active.episodeCurrent || "FULL"}</span>
-            {active.quality && <span className="rounded-md bg-white/20 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">{active.quality}</span>}
+            <span className="rounded-[4.5px] bg-snow px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-obsidian">{active.episodeCurrent || "FULL"}</span>
+            {active.quality && <span className="rounded-[4.5px] bg-smoke/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">{active.quality}</span>}
             {displayRating && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-2.5 py-1 text-xs font-bold text-gold backdrop-blur">
-                <Star className="h-3.5 w-3.5 fill-gold" /> {displayRating.text}
+              <span className="inline-flex items-center gap-1 rounded-[4.5px] bg-smoke/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">
+                <Star className="h-3.5 w-3.5 fill-current text-snow" /> {displayRating.text}
               </span>
             )}
           </div>
-          <h1 className="line-clamp-2 min-h-[4.5rem] max-w-[82%] text-3xl font-black leading-tight tracking-tight text-white drop-shadow-lg sm:max-w-[74%]">{active.name}</h1>
-          <p className="mt-1 line-clamp-1 min-h-5 max-w-[86%] text-sm italic text-zinc-200 sm:max-w-[78%]">{active.originName || active.name} · {active.year || "N/A"}{active.country ? ` · ${active.country}` : ""}</p>
+          <h1 className="line-clamp-2 min-h-[4.5rem] max-w-[82%] text-heading-sm font-bold leading-heading-sm tracking-tight text-snow sm:max-w-[74%]">{active.name}</h1>
+          <p className="mt-1 line-clamp-1 min-h-5 max-w-[86%] text-body text-ash-mist sm:max-w-[78%]">{active.originName || active.name} · {active.year || "N/A"}{active.country ? ` · ${active.country}` : ""}</p>
           <div className="mt-5 flex items-center gap-3">
-            <a href={hrefWithReturnTo(`/watch/${active.slug}`, activeReturnTo, "home")} aria-label={`Xem phim ${active.name}`} className="grid h-16 w-16 place-items-center rounded-full bg-gold text-black shadow-glow transition hover:scale-105">
-              <Play className="ml-1 h-8 w-8 fill-black" />
+            <a href={hrefWithReturnTo(`/watch/${active.slug}`, activeReturnTo, "home")} aria-label={`Xem phim ${active.name}`} className="grid h-12 w-12 place-items-center rounded-lg bg-signal-blue text-snow transition hover:bg-signal-blue/90">
+              <Play className="ml-1 h-6 w-6 fill-current" />
             </a>
-            <a href={hrefWithReturnTo(`/movie/${active.slug}`, activeReturnTo, "home")} aria-label={`Chi tiết phim ${active.name}`} className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-white backdrop-blur transition hover:bg-white/25">
-              <Info className="h-7 w-7" />
+            <a href={hrefWithReturnTo(`/movie/${active.slug}`, activeReturnTo, "home")} aria-label={`Chi tiết phim ${active.name}`} className="grid h-12 w-12 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke">
+              <Info className="h-6 w-6" />
             </a>
           </div>
           <div className="mt-5 flex items-center justify-center gap-1">
@@ -293,7 +293,7 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
                 className="grid h-6 min-w-6 place-items-center rounded-full transition"
               >
                 <span
-                  className={index === visibleIndex ? "h-2.5 w-10 rounded-full bg-gold transition-all" : "h-2.5 w-2.5 rounded-full bg-white/40 transition-all hover:bg-white"}
+                  className={index === visibleIndex ? "h-2 w-8 rounded-full bg-signal-blue transition-all" : "h-2 w-2 rounded-full bg-iron-veil transition-all hover:bg-snow"}
                 />
               </button>
             ))}
