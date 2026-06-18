@@ -404,11 +404,15 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
 
   const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
 
+  const totalItems = Number(pagination?.totalItems || 0);
+  const totalItemsPerPage = Number(pagination?.totalItemsPerPage || safeLimit);
+  const computedTotalPages = totalItems > 0 && totalItemsPerPage > 0 ? Math.ceil(totalItems / totalItemsPerPage) : 0;
+
   return {
     title: titleParts.join(" - "),
     items: visibleListCards(cards),
     page: Number(pagination?.currentPage || safePage),
-    totalPages: Number(pagination?.totalPages || pagination?.total_pages || 0) || undefined
+    totalPages: Number(pagination?.totalPages || pagination?.total_pages || computedTotalPages) || undefined
   };
 }
 
@@ -420,11 +424,15 @@ export async function searchMovies(keyword: string, page = 1, limit = 24): Promi
   const pagination = data?.params?.pagination || {};
   const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
   
+  const totalItems = Number(pagination?.totalItems || 0);
+  const totalItemsPerPage = Number(pagination?.totalItemsPerPage || limit);
+  const computedTotalPages = totalItems > 0 && totalItemsPerPage > 0 ? Math.ceil(totalItems / totalItemsPerPage) : 0;
+
   return {
     title: `Tìm kiếm: ${q}`,
     items: cards.filter((item: MovieCard) => item.slug),
     page: Number(pagination?.currentPage || page),
-    totalPages: Number(pagination?.totalPages || 0) || undefined
+    totalPages: Number(pagination?.totalPages || pagination?.total_pages || computedTotalPages) || undefined
   };
 }
 

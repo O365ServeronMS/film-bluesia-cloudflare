@@ -50,12 +50,11 @@ const nextUrl = (!totalPages || currentPage < totalPages) ? buildUrl(currentPage
   <nav class:list={["flex items-center justify-between pt-12 pb-8", className]} aria-label="Phân trang">
     <a 
       href={prevUrl} 
+      aria-label="Trang trước"
       aria-disabled={!prevUrl} 
-      class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
+      class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
     >
-      <ChevronLeft className="h-4 w-4" /> 
-      <span class="hidden sm:inline">Trang trước</span>
-      <span class="sm:hidden">Trước</span>
+      <ChevronLeft className="h-5 w-5" /> 
     </a>
 
     <div class="hidden sm:flex items-center gap-1 mx-4">
@@ -93,12 +92,11 @@ const nextUrl = (!totalPages || currentPage < totalPages) ? buildUrl(currentPage
 
     <a 
       href={nextUrl} 
+      aria-label="Trang sau"
       aria-disabled={!nextUrl} 
-      class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
+      class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
     >
-      <span class="hidden sm:inline">Trang sau</span>
-      <span class="sm:hidden">Sau</span>
-      <ChevronRight className="h-4 w-4" />
+      <ChevronRight className="h-5 w-5" />
     </a>
   </nav>
 )}
