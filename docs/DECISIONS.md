@@ -102,9 +102,8 @@
 
 - Main OPhim HLS playback continues to use `hls.js` directly through `components/HlsVideo.tsx`; do not restore ArtPlayer or another heavy player library as the main HLS player.
 - Production player UI must not show an hls.js readiness/debug/status badge, including `Sẵn sàng phát bằng hls.js`.
-- The top player overlay is limited to the quality selector and local subtitle upload button.
-- Quality options are built dynamically from `hls.levels`, deduplicated by height where needed; `Tự động` sets `hls.currentLevel = -1`, and manual levels set `hls.currentLevel` to the selected manifest level index.
-- Keep the yellow local subtitle upload button. It accepts local `.vtt` files directly and converts local `.srt` files to WebVTT before attaching them as subtitles. Future player changes must not remove either the quality selector or the local subtitle upload button.
+- Keep the HLS UI minimal: use native video controls only. Do not add a custom quality selector or local subtitle upload/conversion controls.
+- hls.js adaptive bitrate selection remains automatic on the fallback path, reducing player state, event listeners, UI code, and initial interaction overhead.
 
 ## Platform
 
