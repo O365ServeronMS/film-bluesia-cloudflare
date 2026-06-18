@@ -31,7 +31,6 @@ import { setCacheBypassRefresh } from "@/lib/runtime-env";
 import { normalizeMovieImage } from "@/lib/movie-images";
 import { buildCachedImagePair } from "@/lib/image-cache";
 
-export const IMAGE_CACHE_TTL_SECONDS = 1296000;
 export const LIST_CACHE_TTL_SECONDS = 1800;
 export const MOVIE_LONG_CACHE_TTL_SECONDS = 7776000;
 export const MOVIE_SHORT_CACHE_TTL_SECONDS = 86400;

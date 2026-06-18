@@ -14,7 +14,7 @@
 - Cloudflare route targets the public site domain.
 - Cron trigger runs every 2 hours and calls the Worker `scheduled()` handler.
 - `src/worker.ts` preserves Astro `fetch` and adds scheduled OPhim refresh behavior.
-- Current app data bindings are `IMAGE_CACHE` and `KV`; required static assets binding is `ASSETS`; active image cache prefix remains `cf-img-jun-2026-v2`.
+- Current runtime bindings are metadata `KV`, static `ASSETS`, and `WORKER_VERSION`; active image delivery uses the external `img.bluesia.net` service and has no site-local R2 binding.
 - Need verification: exact Cloudflare product mode in production, because the repo uses both Worker main/assets and Astro Cloudflare adapter terminology.
 
 ## Important Commands
@@ -31,9 +31,9 @@
 - `src/layouts/BaseLayout.astro` owns metadata, app shell, global poster-image fallback script, and bottom nav island.
 - `components/` contains React islands and reusable UI components.
 - `lib/ophim.ts` is the main OPhim metadata client/normalizer and cache policy coordinator.
-- `lib/cache.ts` abstracts Cloudflare KV/R2/cache helpers, TTLs, write budgets, hashes, and cache stats.
+- `lib/cache.ts` abstracts Cloudflare metadata KV helpers, TTLs, write budgets, hashes, and cache stats.
 - `lib/types.ts` defines shared movie, episode, payload, source, and API types.
-- `lib/utils.ts` contains class merging, image proxy helpers, rating display helpers, and small text utilities.
+- `lib/utils.ts` contains class merging, rating display helpers, and small text utilities.
 - `src/styles/globals.css` carries global Tailwind/CSS behavior.
 
 ## Pages And User Flows
@@ -63,24 +63,23 @@
 ## Data And Cache Assumptions
 
 - OPhim base URL defaults to `https://ophim1.com` unless `OPHIM_BASE_URL` is set.
-- OPhim image CDN fallback roots are in `lib/ophim.ts`, `lib/movie-images.ts`, and `src/pages/api/image.ts`. Image proxy fallback candidates are original URL first, then trusted mirrors only.
+- OPhim image normalization is in `lib/ophim.ts` and `lib/movie-images.ts`; `lib/image-cache.ts` signs normalized upstream URLs for `img.bluesia.net`.
 - List/home/taxonomy metadata TTL is 1800 seconds.
 - Search metadata TTL is 0/no-store.
 - Movie detail metadata has long/short TTL based on completed/full status and playable links.
-- Image cache TTL is 15 days.
-- HTML cache is handled in `src/middleware.ts` with Cache API and a `HTML_CACHE_VERSION` query segment in the internal cache key.
+- External image-cache TTL is owned by `img.bluesia.net`, not this Worker.
+- HTML cache is handled in `src/middleware.ts`; internal Cache API keys use `WORKER_VERSION.id`, with `HTML_CACHE_VERSION` only as a non-production fallback.
 - Private HTML pages include favorites, history, settings, watch pages, and search.
 - Movie pages set `X-Film-Bluesia-Movie-Cache-Class`; middleware converts that to long/short HTML TTLs.
 - Cache refresh bypass uses `?refresh=1&token=...` and a secret-backed token check.
 - `lib/cache.ts` uses `MOVIE_METADATA` if available, otherwise `KV`.
-- R2 image storage uses binding name `IMAGE_CACHE`.
 - KV write budget uses daily keys shaped like `kvstats:writes:YYYY-MM-DD`.
 - Refresh writes compare stable hashes before writing.
 
 ## Storage And State
 
 - Runtime metadata cache is Cloudflare KV-compatible storage.
-- Runtime image cache is Cloudflare R2 plus edge Cache API. R2 bucket: `film-bluesia-cache` (binding: `IMAGE_CACHE`). Old prefixes include `cf-img-v3`, `cf-img-jun-2026-v1`, and `cf-img-jun-2026` (kept for rollback). Active prefix: `cf-img-jun-2026-v2`.
+- Runtime image delivery is the shared external signed cache at `img.bluesia.net`; this Worker does not own image objects or an R2 binding.
 - HTML cache is Cloudflare Cache API.
 - Favorites, history, navigation context, and HLS quality preference are browser storage only.
 - Adaptive navigation prefetch is browser storage only: `src/client/adaptivePrefetch.ts` records local transition counts in `localStorage` under `filmbluesia_nav_stats_v1`, uses `sessionStorage` for last-route and per-session prefetch dedupe, and is initialized from `src/layouts/BaseLayout.astro`.
@@ -92,19 +91,16 @@
 
 - `normalizeCard()` maps source movie payloads to `MovieCard`.
 - 2026-06-13 image incident: newly added movies rendered `No image` when source payloads used camelCase or alternate image fields. Keep image mapping in `lib/movie-images.ts` and support `posterUrl`, `poster_url`, `poster`, `thumbUrl`, `thumb_url`, `thumb`, `thumbnail`, `image_url`, and `image` before allowing an empty normalized poster/thumb.
-- 2026-06-13 follow-up: production image proxy also showed `No image` when Cloudflare did not transform a valid upstream JPEG to WebP. `src/pages/api/image.ts` must accept valid `image/jpeg`, `image/png`, `image/avif`, and `image/webp` origin responses and serve/cache them with the actual content type.
-- 2026-06-15 image fix: newly added movies (with large 1MB-8MB posters) showed `No image` because the image proxy `src/pages/api/image.ts` rejected any untransformed origin-fallback image (e.g. JPEG) exceeding `maxOriginFallbackBytes` (700KB/1.2MB). Since the production site runs in `cloudflare-free` mode (no active image resizing), this size constraint caused all large posters to fail. Relaxed the origin fallback check to use `hardOriginBytes` (8MB) to allow serving these valid original posters.
-- 2026-06-15 hostname normalization: `normalizePosterUrl` in `lib/movie-images.ts` now automatically rewrites alternate/legacy ophim domains (e.g. `img.ophim.cc` and `img.ophim.co`) to `img.ophim.live` to pass the image proxy allowlist checks.
-- 2026-06-15 client-side original fallback: added `data-original-src` check in the global error listener of `src/layouts/BaseLayout.astro`. If the worker proxy fails to load/cache both the poster and the thumbnail, the browser attempts to load the original unproxied CDN URL directly, bypassing the proxy and preventing broken poster layouts. The attributes were added to the `<img>` tags in `MovieCard.tsx`, `HeroSlider.tsx`, and `[slug].astro`.
-- Image cache namespace is `cf-img-jun-2026-v2`. Oversized untransformed origin fallbacks are allowed up to `hardOriginBytes` (8MB) on both R2 read and origin fetch; the edge cache key includes the active prefix plus `reject-large-origin-v1` so old edge `EDGE_HIT` objects are bypassed. Use `X-Film-Bluesia-Net-Image-Transform` to distinguish `transformed`, `origin-fallback`, and `rejected-large-origin`.
-- Image source allowlisting is runtime-configurable through `IMAGE_ALLOWED_HOSTS` and `IMAGE_ALLOWED_HOST_SUFFIXES`. Keep exact OPhim hosts and trusted suffixes such as `.ophim.live`; never allow arbitrary image domains. OPhim image hosts may differ across `img.ophim.live`, `img.ophim1.com`, and older `img.ophim.cc`, but mirrors must not be blindly substituted. `img.ophim.cc` is not a default fallback because it can return `404 application/json` for poster paths. Run `npm run scan:image-hosts` to report latest OPhim poster/thumb hosts before changing allowlist values.
-- Image proxy cache keys for trusted OPhim mirrors are stable by path/profile/version (`ophim:<pathname>:<profile>:cf-img-jun-2026-v2`) so lookup and put use the same key even when a later mirror candidate succeeds.
+- 2026-06-15 hostname normalization: `normalizePosterUrl` in `lib/movie-images.ts` rewrites alternate/legacy OPhim domains (for example `img.ophim.cc` and `img.ophim.co`) to the canonical upstream host before signing external cache URLs.
+- 2026-06-15 client-side original fallback: `src/layouts/BaseLayout.astro` falls back from a failed signed image URL to the original upstream URL, then the local placeholder.
+- Image source allowlisting is retained only for the networked `scan:image-hosts` diagnostic. Active page rendering does not use a site-local image proxy or R2 cache.
 - `movieDetailFromPayload()` builds `MovieDetail`, episode server data, labels, and optional VSEmbed fallback server.
 - `getHome()` fetches latest, single, series, animation, TV, cinema, and filtered list sections, then builds Smart Spotlight candidates.
 - `getList()` supports quick country/category filters for selected list types.
 - `searchMovies()` uses the OPhim search API and does not store search results in metadata cache when TTL is 0.
 - `displayEpisodeServerName()` maps server names beginning with `vietsub` to `OPhim`.
 - 2026-06-16 image delivery: Active page rendering (posters, backdrops, hero images, OG meta images) must use `img.bluesia.net` HMAC-signed URLs generated by `lib/image-cache.ts`. The legacy `/api/image` proxy endpoint and `proxiedImage()` helper have been deleted. Only `m` (mobile) and `d` (desktop) variants are allowed. When signing env vars are missing, components fall back to raw upstream URLs. `lib/image-source-registry.ts` and `scripts/scan-ophim-image-hosts.mjs` are retained for diagnostics.
+- 2026-06-18 Cloudflare cleanup: the Worker has no R2 image binding. Keep only `ASSETS`, metadata `KV`, `WORKER_VERSION`, `IMAGE_CACHE_BASE_URL`, `IMAGE_CACHE_SIGNING_SECRET`, and `ADMIN_REFRESH_TOKEN`. HTML Cache API keys use `WORKER_VERSION.id`, so each deployment automatically bypasses HTML cached by older deployments.
 - `film.bluesia.net` must not render mobile-only `/i/m/` image URLs on desktop pages. Cards and posters provide `m` and `d` responsive URLs via `srcset` or `<picture>`, with the desktop `/i/d/` variant as the default `src`.
 - **Shared Image Cache Invariant**: `film.bluesia.net` and `phim.bluesia.net` MUST use exactly the same `img.bluesia.net` cache key for identical images. The key is derived purely from `sha256Hex(normalized-upstream-url)` and the variant (`m` or `d`). No frontend-specific domains, slugs, or parameters are allowed in the payload.
 

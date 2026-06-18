@@ -64,6 +64,12 @@ function publicHtmlPolicy(pathname: string): HtmlCachePolicy | null {
 }
 
 function htmlCacheVersion(env: Record<string, unknown> | undefined) {
+  const versionMetadata = env?.WORKER_VERSION;
+  if (versionMetadata && typeof versionMetadata === "object") {
+    const versionId = (versionMetadata as { id?: unknown }).id;
+    if (typeof versionId === "string" && versionId) return versionId;
+  }
+
   return String(env?.HTML_CACHE_VERSION || process.env.HTML_CACHE_VERSION || DEFAULT_HTML_CACHE_VERSION);
 }
 

@@ -25,12 +25,9 @@
       "persist": true
     }
   },
-  "r2_buckets": [
-    {
-      "binding": "IMAGE_CACHE",
-      "bucket_name": "film-bluesia-cache"
-    }
-  ],
+  "version_metadata": {
+    "binding": "WORKER_VERSION"
+  },
   "kv_namespaces": [
     {
       "binding": "KV",
@@ -38,14 +35,6 @@
     }
   ],
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://film.bluesia.net",
-    "HTML_CACHE_VERSION": "Jun26-v4",
-    "IMAGE_CACHE_BASE_URL": "https://img.bluesia.net",
-    "BLUESIA_IMAGE_TRANSFORM_MODE": "cloudflare-free",
-    "IMAGE_CACHE_VERSION": "cf-img-jun-2026-v2",
-    "IMAGE_ALLOWED_HOSTS": "img.ophim1.com,img.ophim.live",
-    "IMAGE_ALLOWED_HOST_SUFFIXES": ".ophim.live,.ophim1.com",
-    "OPHIM_REFRESH_MAX_MOVIES": "24",
-    "OPHIM_REFRESH_DELAY_MS": "1500"
+    "IMAGE_CACHE_BASE_URL": "https://img.bluesia.net"
   }
 }

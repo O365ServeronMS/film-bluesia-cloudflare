@@ -2,37 +2,10 @@ import { cacheBypassRefresh, runtimeEnv } from "@/lib/runtime-env";
 
 const MOVIE_LIST_METADATA_CACHE_VERSION = "img-fields-v2";
 
-const IMAGE_TTL_SECONDS = 60 * 60 * 24 * 15;
 const DETAIL_TTL_SECONDS = 60 * 60 * 24 * 90;
 const LIST_TTL_SECONDS = 60 * 30;
 const SEARCH_TTL_SECONDS = 0;
 const ERROR_TTL_SECONDS = 60;
-
-type MinimalR2Object = {
-  arrayBuffer(): Promise<ArrayBuffer>;
-  size: number;
-  uploaded?: Date;
-  httpMetadata?: { contentType?: string };
-  customMetadata?: Record<string, string>;
-};
-
-type MinimalR2Bucket = {
-  get(key: string): Promise<MinimalR2Object | null>;
-  put(
-    key: string,
-    value: string | ArrayBuffer | ArrayBufferView | ReadableStream,
-    options?: {
-      httpMetadata?: { contentType?: string };
-      customMetadata?: Record<string, string>;
-    }
-  ): Promise<unknown>;
-  delete(key: string): Promise<void>;
-  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{
-    objects: Array<{ key: string; size: number; uploaded: Date; customMetadata?: Record<string, string> }>;
-    truncated: boolean;
-    cursor?: string;
-  }>;
-};
 
 type MinimalKvNamespace = {
   get(key: string): Promise<string | null>;
@@ -48,7 +21,6 @@ type MinimalKvNamespace = {
 type CacheEnv = {
   KV?: MinimalKvNamespace;
   MOVIE_METADATA?: MinimalKvNamespace;
-  IMAGE_CACHE?: MinimalR2Bucket;
 };
 
 type JsonEnvelope<T> = {
@@ -56,13 +28,6 @@ type JsonEnvelope<T> = {
   sourceUrl?: string;
   hash?: string;
   value: T;
-};
-
-export type BinaryCacheHit = {
-  body: Uint8Array;
-  contentType: string;
-  sourceUrl?: string;
-  etag?: string;
 };
 
 export type JsonCacheEntry<T> = {
@@ -110,20 +75,12 @@ function metadataKv() {
   return env().MOVIE_METADATA || env().KV;
 }
 
-function imageR2() {
-  return env().IMAGE_CACHE;
-}
-
 function cacheLog(message: string, details?: Record<string, unknown>) {
   console.log(`[cache] ${message}`, details || {});
 }
 
 export function logCacheEvent(message: string, details?: Record<string, unknown>) {
   cacheLog(message, details);
-}
-
-export function imageCacheTtlSeconds() {
-  return IMAGE_TTL_SECONDS;
 }
 
 export function detailCacheTtlSeconds() {
@@ -268,74 +225,6 @@ async function metadataKey(namespace: string, key: string) {
   return `metadata:${namespace}:${await sha256(key)}`;
 }
 
-async function etagFor(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest)).slice(0, 8).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export async function readBinaryCache(_namespace: string, key: string, ttlSeconds = imageCacheTtlSeconds()): Promise<BinaryCacheHit | null> {
-  if (cacheBypassRefresh()) {
-    cacheLog("IMAGE_R2_MISS", { key, reason: "refresh-bypass" });
-    return null;
-  }
-
-  const bucket = imageR2();
-  if (!bucket) {
-    cacheLog("IMAGE_R2_MISS", { key, reason: "missing-IMAGE_CACHE-binding" });
-    return null;
-  }
-
-  try {
-    const object = await bucket.get(key);
-    if (!object) {
-      cacheLog("IMAGE_R2_MISS", { key });
-      return null;
-    }
-
-    if (!isCacheEntryFresh(object.customMetadata?.cachedAt, ttlSeconds)) {
-      cacheLog("IMAGE_R2_MISS", { key, reason: "stale" });
-      return null;
-    }
-
-    cacheLog("IMAGE_R2_HIT", { key, bytes: object.size });
-    return {
-      body: new Uint8Array(await object.arrayBuffer()),
-      contentType: object.httpMetadata?.contentType || object.customMetadata?.contentType || "application/octet-stream",
-      sourceUrl: object.customMetadata?.sourceUrl,
-      etag: object.customMetadata?.etag
-    };
-  } catch (error) {
-    cacheLog("IMAGE_R2_MISS", { key, error: error instanceof Error ? error.message : String(error) });
-    return null;
-  }
-}
-
-export async function writeBinaryCache(_namespace: string, key: string, body: Uint8Array, contentType: string, sourceUrl?: string): Promise<{ etag: string; skipped?: boolean }> {
-  const etag = await etagFor(body);
-  const bucket = imageR2();
-  if (!bucket) {
-    cacheLog("IMAGE_R2_WRITE", { key, skipped: true, reason: "missing-IMAGE_CACHE-binding" });
-    return { etag, skipped: true };
-  }
-
-  if (!body.byteLength || !contentType.toLowerCase().startsWith("image/")) {
-    cacheLog("IMAGE_R2_WRITE", { key, skipped: true, reason: "invalid-image-response" });
-    return { etag, skipped: true };
-  }
-
-  await bucket.put(key, body, {
-    httpMetadata: { contentType },
-    customMetadata: {
-      contentType,
-      sourceUrl: sourceUrl || "",
-      etag,
-      cachedAt: new Date().toISOString()
-    }
-  });
-  cacheLog("IMAGE_R2_WRITE", { key, bytes: body.byteLength, contentType });
-  return { etag };
-}
-
 export async function readJsonCache<T>(namespace: string, key: string, ttlSeconds = detailCacheTtlSeconds(), allowExpired = false): Promise<T | null> {
   const entry = await readJsonCacheEntry<T>(namespace, key, ttlSeconds, allowExpired);
   return entry?.value || null;
@@ -442,10 +331,9 @@ export async function cacheStats() {
   return {
     root: {
       metadata: metadataKv() ? "kv:MOVIE_METADATA|KV" : "missing",
-      images: imageR2() ? "r2:IMAGE_CACHE" : "missing"
+      images: "external:img.bluesia.net"
     },
     ttlSeconds: {
-      images: imageCacheTtlSeconds(),
       metadataList: listCacheTtlSeconds(),
       metadataSearch: searchCacheTtlSeconds(),
       metadataDetail: detailCacheTtlSeconds(),
@@ -455,5 +343,5 @@ export async function cacheStats() {
 }
 
 export async function pruneCache(_force = true) {
-  cacheLog("KV_METADATA_MISS", { reason: "prune-not-supported-for-kv-r2-split" });
+  cacheLog("KV_METADATA_MISS", { reason: "prune-not-supported-for-kv" });
 }

@@ -4,7 +4,7 @@
 
 - `package.json`: scripts, dependencies, browser targets. Build command is `npm run build`.
 - `astro.config.mjs`: Astro server output, Cloudflare adapter, React integration, Vite aliases/cache dir.
-- `wrangler.jsonc`: Cloudflare Worker/assets entry, compatibility flags, route, cron, KV/R2 bindings, public vars. Controls Cloudflare bindings: `IMAGE_CACHE` is the R2 image cache binding, `KV` is the metadata KV binding, and `assets.binding = "ASSETS"` is required for static CSS/JS assets.
+- `wrangler.jsonc`: Cloudflare Worker/assets entry, compatibility flags, route, cron, metadata KV, Worker Version Metadata, and the external image-cache base URL. `assets.binding = "ASSETS"` is required for static CSS/JS assets.
 - `tsconfig.json`: strict TypeScript, JSX, path alias, generated-folder excludes.
 - `postcss.config.mjs`: Tailwind/PostCSS setup.
 - `docs/CLOUDFLARE_CACHE.md`: operational cache documentation and binding expectations.
@@ -24,7 +24,6 @@
 
 ## API Routes
 
-- `src/pages/api/image.ts`: image proxy/optimizer; handles image cache prefix (`IMAGE_CACHE_PREFIX`) and key generation (`cacheKey`), proxying, and caching via Cloudflare Image Resizing, edge cache, and R2 (using helpers in `lib/cache.ts`).
 - `src/pages/api/admin/refresh.ts`: protected manual OPhim refresh endpoint and KV rate/write-budget logic.
 - `src/pages/api/cache/status.ts`: cache status/prune endpoint wrapper.
 - `src/pages/api/ophim/home.ts`: home metadata API.
@@ -60,7 +59,7 @@
 ## Libraries
 
 - `lib/ophim.ts`: OPhim client, metadata normalization, list/home/search/detail fetches, TTL policy, refresh jobs.
-- `lib/cache.ts`: KV/R2/Cache API helpers, TTLs, binary/json caches, stable hashes, write budgets, cache stats.
+- `lib/cache.ts`: metadata KV helpers, TTLs, stable hashes, write budgets, and cache stats.
 - `lib/types.ts`: shared movie, episode, source payload, taxonomy, and API types.
 - `lib/utils.ts`: class merging, text cleanup, rating display helpers, proxied image URL/srcset helpers.
 - `lib/spotlight.ts`: Smart Spotlight scoring/merging logic.
@@ -97,6 +96,6 @@
 - Video player / HLS: `rg -n "HlsVideo|hls.js|m3u8|IframePlayerFacade|vsembed|Vidsrc|subtitle|quality" components src lib`.
 - Video buffering policy: `docs/video-buffering-policy.md` and the Player section in `docs/DECISIONS.md`.
 - Cloudflare Worker/Pages logic: `rg -n "worker|scheduled|createExports|cloudflare|wrangler|adapter|caches.default" src lib astro.config.mjs wrangler.jsonc`.
-- KV/R2/D1/cache logic: `rg -n "KV|MOVIE_METADATA|IMAGE_CACHE|R2|D1|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib docs/CLOUDFLARE_CACHE.md wrangler.jsonc`.
+- KV/Cache API logic: `rg -n "KV|MOVIE_METADATA|WORKER_VERSION|cache|TTL|HTML_CACHE_VERSION|writeBudget" src lib docs/CLOUDFLARE_CACHE.md wrangler.jsonc`.
 - SEO / robots / sitemap: `rg -n "canonical|og:|twitter|robots|sitemap|manifest|_headers" src public`.
 - OPhim metadata shape: `rg -n "normalizeCard|SourceMovie|SourceRating|tmdb|imdb|episode" lib src`.

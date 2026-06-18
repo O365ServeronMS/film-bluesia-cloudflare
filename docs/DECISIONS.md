@@ -1,5 +1,12 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-18 Deployment-Scoped HTML Cache And Binding Cleanup
+
+- **Decision**: HTML Cache API keys use the Cloudflare `WORKER_VERSION.id` binding. Every deployment gets a new cache namespace automatically, so old HTML cannot reference a new deployment's replaced Astro assets.
+- **Bindings**: Keep `ASSETS`, metadata `KV`, and `WORKER_VERSION`. The old site-local `IMAGE_CACHE` R2 binding is removed because active images use the external signed cache at `img.bluesia.net`.
+- **Variables**: Production keeps only `IMAGE_CACHE_BASE_URL`; refresh tuning uses code defaults. `HTML_CACHE_VERSION` is a fallback for environments without Version Metadata, not a production deploy knob.
+- **Secrets**: Keep `IMAGE_CACHE_SIGNING_SECRET` and `ADMIN_REFRESH_TOKEN` because both have active server-side call-sites. Never expose either through a `PUBLIC_` variable.
+
 ## 2026-06-18 Unified Movie Detail And Playback Page
 
 - **Decision**: The primary flow is List/Home -> `/movie/[slug]`. Movie metadata, episode selection, and playback live on the same page; new UI links must not navigate users to `/watch/[slug]`.
@@ -102,23 +109,21 @@
 
 - The app targets Astro server output with the Cloudflare adapter.
 - Keep Worker/edge compatibility. Avoid Node-only APIs unless they are already supported by configured compatibility and tested by build/preview.
-- Do not introduce filesystem runtime persistence; use Cloudflare KV/R2/Cache API or browser storage according to existing patterns.
+- Do not introduce filesystem runtime persistence; use Cloudflare KV/Cache API or browser storage according to existing patterns.
 - Preserve `src/worker.ts` as the custom Worker entrypoint that forwards Astro fetch and owns scheduled refresh behavior.
-- Cloudflare bindings have separate roles: `IMAGE_CACHE` and `KV` are app data bindings and must remain unchanged unless explicitly requested.
+- Cloudflare bindings have separate roles: `KV` stores metadata, `WORKER_VERSION` isolates HTML cache keys per deployment, and `ASSETS` serves static files.
 - `ASSETS` is the static assets binding required by the Astro Worker fallback through `env.ASSETS.fetch()`.
 - Do not confuse R2/KV bindings with `assets.binding`; missing `ASSETS` can cause `/_astro/*.css` or `/_astro/*.js` requests to fail with Worker Exception 1101.
 
 ## Caching
 
-- HTML cache behavior lives in `src/middleware.ts`; metadata/image cache behavior lives mostly in `lib/cache.ts`, `lib/ophim.ts`, and `src/pages/api/image.ts`.
+- HTML cache behavior lives in `src/middleware.ts`; metadata cache behavior lives in `lib/cache.ts` and `lib/ophim.ts`; active image delivery uses `lib/image-cache.ts` and `img.bluesia.net`.
 - Do not change unrelated cache keys, cache key prefixes, TTLs, `HTML_CACHE_VERSION`, or binding names unless explicitly requested.
 - Movie HTML cache duration depends on `X-Film-Bluesia-Movie-Cache-Class` from the detail page.
 - Search, watch, favorites, history, and settings should remain no-store/private HTML unless a task explicitly changes that.
-- Image cache objects use fixed profiles and WebP output; do not add arbitrary width/quality cache variants without a cache design change.
+- External image cache URLs use only `m` and `d` variants; do not add arbitrary width/quality parameters.
 - Refresh writes should preserve stable-hash deduplication and daily KV write-budget behavior.
-- Current active image cache namespace is `cf-img-jun-2026-v2`.
-- Do not change image cache namespace/prefix without explicit owner approval.
-- Do not delete old R2 cache prefixes during code changes; keep them for rollback unless explicitly requested.
+- Do not reintroduce a site-local R2 image cache while the shared external image cache contract is active.
 
 ## Data
 
