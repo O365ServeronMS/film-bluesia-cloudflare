@@ -70,3 +70,7 @@
 - Report changed files and one-line purpose for each.
 - Report verification commands and results.
 - Mention any remaining `Need verification` items or skipped checks.
+
+## Pagination Rules
+
+- We use a strict Netflix-style compact window for pagination. See `docs/PAGINATION.md` for the exact algorithm. Do not revert to simple next/prev or endless scroll.
