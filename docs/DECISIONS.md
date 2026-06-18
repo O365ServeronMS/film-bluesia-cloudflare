@@ -93,7 +93,8 @@
 ## 2026-06-09 HLS Playback Strategy
 
 - Desktop and Android prefer the iframe/embed source when it exists. iOS prefers direct native HLS; embed remains its fallback when no HLS URL exists.
-- HLS playback is hls.js-first for MSE-capable browsers, with native HLS fallback for iOS/Safari or unsupported MSE cases, to keep desktop browser playback behavior consistent without breaking iOS native playback.
+- Desktop and Android use a valid API iframe/embed before any direct HLS path, reducing client HLS parsing and buffering work. iOS/iPadOS uses native Safari HLS before iframe playback.
+- The light hls.js build is fallback-only when native HLS is unsupported and no usable iframe/native path remains; it is dynamically imported so it is absent from the initial player chunk.
 - `components/HlsVideo.tsx` must keep `hls.js/dist/hls.light.js` as a dynamic import inside the direct player path; do not import hls.js globally or switch back to the full build.
 - Fatal hls.js errors recover by type: network errors call `startLoad()`, media errors call `recoverMediaError()`, and other fatal errors destroy hls.js before attempting native HLS fallback.
 
@@ -175,7 +176,7 @@
 
 ## Player
 
-- Direct OPhim HLS playback uses `HlsVideo.tsx` with hls.js first on MSE-capable browsers and native HTML5 HLS fallback for iOS/Safari or unsupported MSE cases.
+- Direct OPhim HLS playback uses native HTML5 HLS first where supported. `HlsVideo.tsx` dynamically imports the light hls.js build only for the explicit MSE fallback path.
 - M3U8/HLS chunking is delegated to upstream playlist segments; do not proxy, re-chunk, download, transcode, or store third-party video segments through the Cloudflare Worker.
 - HLS performance tuning belongs in the client player: conservative default buffer, good-network aggressive buffer cap, retry settings, lazy loading, native HLS fallback, and fatal error recovery.
 - Default HLS buffer target should remain 60 seconds. Aggressive mode may target 180 seconds with a 300-second max cap only on good connections; 5-minute buffering is not a universal default.

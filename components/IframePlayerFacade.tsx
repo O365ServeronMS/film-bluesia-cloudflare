@@ -4,12 +4,13 @@ import { useState } from "react";
 import { Play } from "lucide-react";
 
 type IframePlayerFacadeProps = {
+  onError?: () => void;
   src: string;
   poster?: string;
   title: string;
 };
 
-export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadeProps) {
+export function IframePlayerFacade({ onError, src, poster, title }: IframePlayerFacadeProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   if (isPlaying) {
@@ -17,9 +18,10 @@ export function IframePlayerFacade({ src, poster, title }: IframePlayerFacadePro
       <iframe
         src={src}
         title={title}
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-        referrerPolicy="origin"
+        allow="autoplay; fullscreen; picture-in-picture"
+        referrerPolicy="no-referrer-when-downgrade"
         allowFullScreen
+        onError={onError}
         className="h-full w-full border-0 bg-black"
       />
     );

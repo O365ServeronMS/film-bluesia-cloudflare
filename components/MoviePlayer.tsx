@@ -1,11 +1,17 @@
 "use client";
 
 import { Play, X } from "lucide-react";
-import { useRef, useState } from "react";
-import type { MovieCard } from "@/lib/types";
+import { useEffect, useRef, useState } from "react";
 import { HlsVideo } from "@/components/HlsVideo";
 import { IframePlayerFacade } from "@/components/IframePlayerFacade";
 import { WatchRecorder } from "@/components/WatchRecorder";
+import {
+  normalizePlaybackUrl,
+  resolveHlsPlaybackSource,
+  resolvePlaybackSource,
+  type PlaybackSource,
+} from "@/lib/playback";
+import type { MovieCard } from "@/lib/types";
 
 type MoviePlayerProps = {
   embedSrc?: string;
@@ -14,8 +20,8 @@ type MoviePlayerProps = {
   initialOpen?: boolean;
   movie: MovieCard;
   poster?: string;
+  preferredMode?: "iframe" | "hls";
   title: string;
-  useEmbedPlayer: boolean;
 };
 
 export function MoviePlayer({
@@ -25,17 +31,68 @@ export function MoviePlayer({
   initialOpen = false,
   movie,
   poster,
+  preferredMode,
   title,
-  useEmbedPlayer,
 }: MoviePlayerProps) {
   const [isOpen, setIsOpen] = useState(initialOpen);
+  const [playbackSource, setPlaybackSource] = useState<PlaybackSource | null>(null);
   const playerRef = useRef<HTMLDivElement | null>(null);
+  const iframeFailedRef = useRef(false);
+  const nativeHlsFailedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPlaybackSource(null);
+      return;
+    }
+
+    iframeFailedRef.current = false;
+    nativeHlsFailedRef.current = false;
+    const probe = document.createElement("video");
+    if (preferredMode === "iframe") {
+      const iframeUrl = normalizePlaybackUrl(embedSrc);
+      setPlaybackSource(iframeUrl ? { mode: "iframe", iframeUrl } : resolveHlsPlaybackSource(hlsSrc, probe));
+      return;
+    }
+    if (preferredMode === "hls") {
+      const hlsSource = resolveHlsPlaybackSource(hlsSrc, probe);
+      setPlaybackSource(hlsSource.mode !== "none" ? hlsSource : resolvePlaybackSource({ iframeUrl: embedSrc }, probe));
+      return;
+    }
+
+    setPlaybackSource(resolvePlaybackSource({ iframeUrl: embedSrc, hlsUrl: hlsSrc }, probe));
+  }, [embedSrc, hlsSrc, isOpen, preferredMode]);
 
   function openPlayer() {
     setIsOpen(true);
     window.requestAnimationFrame(() => {
       playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  function handleIframeError() {
+    iframeFailedRef.current = true;
+    const hlsUrl = normalizePlaybackUrl(hlsSrc);
+    if (nativeHlsFailedRef.current && hlsUrl) {
+      setPlaybackSource({ mode: "hls-js", hlsUrl });
+      return;
+    }
+    setPlaybackSource(resolveHlsPlaybackSource(hlsUrl, document.createElement("video")));
+  }
+
+  function handleHlsError() {
+    if (playbackSource?.mode === "native-hls") {
+      nativeHlsFailedRef.current = true;
+      const iframeUrl = normalizePlaybackUrl(embedSrc);
+      const hlsUrl = normalizePlaybackUrl(hlsSrc);
+      setPlaybackSource(iframeUrl && !iframeFailedRef.current
+        ? { mode: "iframe", iframeUrl }
+        : hlsUrl
+          ? { mode: "hls-js", hlsUrl }
+          : { mode: "none" });
+      return;
+    }
+    setPlaybackSource({ mode: "none" });
   }
 
   return (
@@ -69,14 +126,14 @@ export function MoviePlayer({
             </button>
           </div>
           <div className="aspect-video w-full bg-black">
-            {useEmbedPlayer && embedSrc ? (
-              <IframePlayerFacade src={embedSrc} poster={poster} title={title} />
-            ) : hlsSrc ? (
-              <HlsVideo src={hlsSrc} poster={poster} />
-            ) : embedSrc ? (
-              <IframePlayerFacade src={embedSrc} poster={poster} title={title} />
+            {playbackSource?.mode === "iframe" && playbackSource.iframeUrl ? (
+              <IframePlayerFacade onError={handleIframeError} src={playbackSource.iframeUrl} poster={poster} title={title} />
+            ) : (playbackSource?.mode === "native-hls" || playbackSource?.mode === "hls-js") && playbackSource.hlsUrl ? (
+              <HlsVideo mode={playbackSource.mode} onPlaybackFailure={handleHlsError} src={playbackSource.hlsUrl} poster={poster} />
+            ) : playbackSource === null ? (
+              <div className="grid h-full place-items-center p-6 text-center text-body text-ash-mist">Đang chuẩn bị player…</div>
             ) : (
-              <div className="grid h-full place-items-center p-6 text-center text-body text-ash-mist">Không có link xem cho tập này.</div>
+              <div className="grid h-full place-items-center p-6 text-center text-body text-ash-mist">No playable source.</div>
             )}
           </div>
         </div>

@@ -6,6 +6,7 @@ import { MoviePlayer } from "@/components/MoviePlayer";
 import { episodeWatchKey, findEpisodeByWatchKey } from "@/lib/episodes";
 import { fallbackReturnToForSource, getBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie, movieDetailCachePolicy } from "@/lib/ophim";
+import { normalizePlaybackUrl } from "@/lib/playback";
 import type { MovieCard } from "@/lib/types";
 import { getDisplayRating, stripHtml } from "@/lib/utils";
 
@@ -26,7 +27,6 @@ const requestedPlayer = String(Astro.url.searchParams.get("player") || "").toLow
 const forceEmbed = requestedPlayer === "embed";
 const forceHls = requestedPlayer === "hls";
 const userAgent = Astro.request.headers.get("user-agent") || "";
-const isIos = /iphone|ipad|ipod/i.test(userAgent);
 const mobileUA = /android|iphone|ipad|ipod|mobile|iemobile|opera mini|webos/i.test(userAgent);
 
 function mobileVidsrcHost() {
@@ -35,23 +35,23 @@ function mobileVidsrcHost() {
 }
 
 function resolveEmbedUrl(src: string | undefined) {
-  if (!src) return undefined;
+  const normalized = normalizePlaybackUrl(src);
+  if (!normalized) return undefined;
   try {
-    const url = new URL(src);
-    if (!vidsrcHosts.has(url.hostname)) return src;
+    const url = new URL(normalized);
+    if (!vidsrcHosts.has(url.hostname)) return normalized;
     const mirror = String(Astro.url.searchParams.get("mirror") || "").trim().toLowerCase();
     if (vidsrcHosts.has(mirror)) url.hostname = mirror;
     else if (mobileUA) url.hostname = mobileVidsrcHost();
     url.searchParams.set("autoplay", "0");
     return url.toString();
   } catch {
-    return src;
+    return undefined;
   }
 }
 
 const playerEmbed = resolveEmbedUrl(embed);
-const preferEmbedPlayer = forceEmbed || (!isIos && !forceHls);
-const useEmbedPlayer = Boolean(playerEmbed) && (preferEmbedPlayer || !m3u8);
+const preferredMode = forceEmbed ? "iframe" : forceHls ? "hls" : undefined;
 const initialPlayerOpen = Astro.url.searchParams.get("play") === "1";
 const heroImage = movie.poster || movie.thumb;
 const heroSigned = movie.posterSigned || movie.thumbSigned;
@@ -156,7 +156,7 @@ const movieCard = {
           </div>
         </div>
         <div id="player" class="mt-6 grid gap-3">
-          <MoviePlayer client:load embedSrc={playerEmbed} episodeLabel={selectedEpisodeLabel} hlsSrc={m3u8} initialOpen={initialPlayerOpen} movie={movieCard} poster={playerPoster} title={`${movie.name} - ${episode?.name || "Tập phim"}`} useEmbedPlayer={useEmbedPlayer} />
+          <MoviePlayer client:load embedSrc={playerEmbed} episodeLabel={selectedEpisodeLabel} hlsSrc={m3u8} initialOpen={initialPlayerOpen} movie={movieCard} poster={playerPoster} preferredMode={preferredMode} title={`${movie.name} - ${episode?.name || "Tập phim"}`} />
           <MovieActions client:load movie={movieCard} />
         </div>
       </div>
