@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Info, Play, Sparkles, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Sparkles, Star } from "lucide-react";
 import type { MovieCard } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
 import { baseSpotlightScore, normalizedLabelSet } from "@/lib/spotlight";
@@ -278,9 +278,6 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
           <div className="mt-5 flex items-center gap-3">
             <a href={hrefWithReturnTo(`/movie/${active.slug}?play=1#player`, activeReturnTo, "home")} aria-label={`Xem phim ${active.name}`} className="grid h-12 w-12 place-items-center rounded-lg bg-signal-blue text-snow transition hover:bg-signal-blue/90">
               <Play className="ml-1 h-6 w-6 fill-current" />
-            </a>
-            <a href={hrefWithReturnTo(`/movie/${active.slug}`, activeReturnTo, "home")} aria-label={`Chi tiết phim ${active.name}`} className="grid h-12 w-12 place-items-center rounded-lg bg-smoke/80 text-snow transition hover:bg-smoke">
-              <Info className="h-6 w-6" />
             </a>
           </div>
           <div className="mt-5 flex items-center justify-center gap-1">

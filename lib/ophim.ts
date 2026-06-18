@@ -67,14 +67,17 @@ export function displayEpisodeServerName(serverName?: string) {
   return /^vietsub/i.test(name) ? "OPhim" : name || "Server";
 }
 
+function normalizeFilterSlug(value?: string) {
+  const slug = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : "";
+}
+
 function normalizeCountrySlug(country?: string) {
-  const slug = String(country || "").trim().toLowerCase();
-  return countryLabels[slug] ? slug : "";
+  return normalizeFilterSlug(country);
 }
 
 function normalizeCategorySlug(category?: string) {
-  const slug = String(category || "").trim().toLowerCase();
-  return categoryLabels[slug] ? slug : "";
+  return normalizeFilterSlug(category);
 }
 
 function jsonFetchOptions(revalidate: number) {
@@ -374,6 +377,9 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
   if (countrySlug) {
     query.set("country", countrySlug);
   }
+  if (categorySlug && apiListType === type) {
+    query.set("category", categorySlug);
+  }
 
   let payload: SourceListPayload;
 
@@ -383,6 +389,7 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
     } catch {
       const legacyQuery = new URLSearchParams({ page: String(safePage) });
       if (countrySlug) legacyQuery.set("country", countrySlug);
+      if (categorySlug && apiListType === type) legacyQuery.set("category", categorySlug);
       payload = await fetchJson<SourceListPayload>(`/danh-sach/phim-moi-cap-nhat?${legacyQuery.toString()}`, 300);
     }
   } else {
@@ -392,8 +399,8 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
   const { items, cdn, data } = getItems(payload);
   const pagination = data?.params?.pagination || data?.pagination || payload?.pagination || {};
   const titleParts = [listLabels[type] || "Danh sách phim"];
-  if (countrySlug) titleParts.push(countryLabels[countrySlug]);
-  if (categorySlug) titleParts.push(categoryLabels[categorySlug]);
+  if (countrySlug && countryLabels[countrySlug]) titleParts.push(countryLabels[countrySlug]);
+  if (categorySlug && categoryLabels[categorySlug]) titleParts.push(categoryLabels[categorySlug]);
 
   const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
 

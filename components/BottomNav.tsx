@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clapperboard, Film, Home, MonitorPlay, Settings, Sparkles } from "lucide-react";
+import { Clapperboard, Film, Home, MonitorPlay, Sparkles } from "lucide-react";
 import { getActiveNavKey, navSourceFromHash, navSourceFromSearchParams, normalizeNavPath } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -130,8 +130,8 @@ export function BottomNav({
   }, []);
 
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[720px] bg-smoke px-2 pb-[calc(10px+env(safe-area-inset-bottom))] pt-2">
-      <div className="bottom-nav-grid grid grid-cols-5 gap-1">
+    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[720px] bg-smoke px-2 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1">
+      <div className="bottom-nav-grid grid grid-cols-5 gap-0.5">
         {items.map((item) => {
           const active = activeKey === item.key;
           const Icon = item.icon;
@@ -139,6 +139,7 @@ export function BottomNav({
             <a
               href={item.href}
               key={item.href}
+              aria-current={active ? "page" : undefined}
               onClick={() => {
                 writeContext(item.href, "");
                 setPathname(item.href);
@@ -147,11 +148,11 @@ export function BottomNav({
                 devLog("NAV_CLICK_TARGET", { href: item.href, active: item.key });
               }}
               className={cn(
-                "bottom-nav-item flex flex-col items-center justify-center rounded-lg px-1 py-2 text-caption tracking-caption font-semibold text-iron-veil transition-colors",
+                "bottom-nav-item flex min-h-12 flex-col items-center justify-center rounded-lg px-1 py-1 text-caption font-semibold tracking-caption text-iron-veil transition-colors",
                 active && "text-signal-blue"
               )}
             >
-              <Icon className="bottom-nav-icon mb-1 h-6 w-6" strokeWidth={active ? 2.5 : 2} />
+              <Icon className="bottom-nav-icon mb-0.5 h-5 w-5" strokeWidth={active ? 2.5 : 2} />
               <span className="bottom-nav-label whitespace-nowrap">{item.label}</span>
             </a>
           );

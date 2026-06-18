@@ -4,7 +4,8 @@ import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { MovieCard } from "@/components/MovieCard";
 import { TopBar } from "@/components/TopBar";
 import { createReturnToPath } from "@/lib/navigation";
-import { getList } from "@/lib/ophim";
+import { getCategories, getCountries, getList } from "@/lib/ophim";
+import type { SourceLabel } from "@/lib/types";
 
 const type = Astro.params.type || "phim-le";
 const page = Math.max(1, Number(Astro.url.searchParams.get("page") || "1"));
@@ -17,11 +18,31 @@ const countryFilterableTypes = new Set(["phim-le", "phim-bo", "tv-shows"]);
 const categoryFilterableTypes = new Set(["phim-le"]);
 const supportsCountryFilter = countryFilterableTypes.has(type);
 const supportsCategoryFilter = categoryFilterableTypes.has(type);
-const countryParam = String(Astro.url.searchParams.get("country") || "").trim().toLowerCase();
-const categoryParam = String(Astro.url.searchParams.get("category") || "").trim().toLowerCase();
-const country = supportsCountryFilter && quickCountries.some((item) => item.slug === countryParam) ? countryParam : "";
-const category = supportsCategoryFilter && quickCategories.some((item) => item.slug === categoryParam) ? categoryParam : "";
-const data = await getList(type, page, 30, country, category);
+
+function safeFilterSlug(value: string | null | undefined) {
+  const slug = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : "";
+}
+
+function normalizeTaxonomy(items: SourceLabel[]) {
+  return items.flatMap((item) => {
+    const name = String(item?.name || "").trim();
+    const slug = safeFilterSlug(item?.slug);
+    return name && slug ? [{ name, slug }] : [];
+  });
+}
+
+const requestedCountry = supportsCountryFilter ? safeFilterSlug(Astro.url.searchParams.get("country")) : "";
+const requestedCategory = supportsCategoryFilter ? safeFilterSlug(Astro.url.searchParams.get("category")) : "";
+const [data, countryPayload, categoryPayload] = await Promise.all([
+  getList(type, page, 30, requestedCountry, requestedCategory),
+  supportsCountryFilter ? getCountries() : Promise.resolve([]),
+  supportsCategoryFilter ? getCategories() : Promise.resolve([])
+]);
+const countries = normalizeTaxonomy(countryPayload);
+const categories = normalizeTaxonomy(categoryPayload);
+const country = countries.some((item) => item.slug === requestedCountry) ? requestedCountry : "";
+const category = categories.some((item) => item.slug === requestedCategory) ? requestedCategory : "";
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
 const currentPage = data.page || page;
 const totalPages = data.totalPages;
@@ -29,6 +50,15 @@ const groupStart = Math.floor((Math.max(1, currentPage) - 1) / 10) * 10 + 1;
 const groupEnd = totalPages ? Math.min(groupStart + 9, totalPages) : groupStart + 9;
 const pageNumbers = Array.from({ length: Math.max(0, groupEnd - groupStart + 1) }, (_, index) => groupStart + index);
 const activeFilters = { country, category };
+const typeTitles: Record<string, string> = {
+  "phim-le": "Phim lẻ",
+  "phim-bo": "Phim bộ",
+  "tv-shows": "TV Show",
+  "hoat-hinh": "Hoạt hình"
+};
+const activeCountryName = countries.find((item) => item.slug === country)?.name;
+const activeCategoryName = categories.find((item) => item.slug === category)?.name;
+const displayTitle = [typeTitles[type] || data.title, activeCountryName, activeCategoryName].filter(Boolean).join(" · ");
 
 function listHref(nextPage: number, filters = activeFilters) {
   const query = new URLSearchParams({ page: String(Math.max(1, nextPage)) });
@@ -38,37 +68,23 @@ function listHref(nextPage: number, filters = activeFilters) {
 }
 ---
 
-<BaseLayout title={`${data.title} - Bluesia Cinema`}>
+<BaseLayout title={`${displayTitle} - Bluesia Cinema`}>
   <TopBar client:load />
-  <section class="px-4 pt-6">
-    <h1 class="text-3xl font-black tracking-tight">{data.title}</h1>
-    <p class="mt-1 text-sm text-zinc-400">Trang {currentPage}{totalPages ? ` / ${totalPages}` : ""}</p>
+  <section class="px-4 pt-5">
+    <h1 class="text-heading-sm font-bold leading-heading-sm text-snow">{displayTitle}</h1>
   </section>
 
   {(supportsCountryFilter || supportsCategoryFilter) && (
-    <section class="space-y-3 px-4 pt-4">
-      {supportsCountryFilter && (
-        <div aria-label="Lọc nhanh theo quốc gia">
-          <p class="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Quốc gia</p>
-          <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            <a href={listHref(1, { ...activeFilters, country: "" })} class={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold ring-1 transition ${!country ? "bg-gold text-black ring-gold" : "bg-white/10 text-zinc-200 ring-white/10"}`}>Tất cả</a>
-            {quickCountries.map((item) => (
-              <a href={listHref(1, { ...activeFilters, country: item.slug })} class={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold ring-1 transition ${country === item.slug ? "bg-gold text-black ring-gold" : "bg-white/10 text-zinc-200 ring-white/10"}`}>{item.label}</a>
-            ))}
-          </div>
-        </div>
-      )}
-      {supportsCategoryFilter && (
-        <div aria-label="Lọc nhanh theo nhóm phim">
-          <p class="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Nhóm phim</p>
-          <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            <a href={listHref(1, { ...activeFilters, category: "" })} class={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold ring-1 transition ${!category ? "bg-gold text-black ring-gold" : "bg-white/10 text-zinc-200 ring-white/10"}`}>Tất cả</a>
-            {quickCategories.map((item) => (
-              <a href={listHref(1, { ...activeFilters, category: item.slug })} class={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold ring-1 transition ${category === item.slug ? "bg-gold text-black ring-gold" : "bg-white/10 text-zinc-200 ring-white/10"}`}>{item.label}</a>
-            ))}
-          </div>
-        </div>
-      )}
+    <section class="px-4 pt-3" aria-label="Lọc nhanh">
+      <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <a href={listHref(1, { country: "", category: "" })} aria-current={!country && !category ? "true" : undefined} class={`whitespace-nowrap rounded-[4.5px] border px-3 py-1.5 text-caption font-bold tracking-caption transition-colors ${!country && !category ? "border-signal-blue bg-signal-blue text-snow" : "border-white/10 bg-smoke text-ash-mist hover:text-snow"}`}>Tất cả</a>
+        {supportsCountryFilter && quickCountries.map((item) => (
+          <a href={listHref(1, { ...activeFilters, country: item.slug })} aria-current={country === item.slug ? "true" : undefined} class={`whitespace-nowrap rounded-[4.5px] border px-3 py-1.5 text-caption font-bold tracking-caption transition-colors ${country === item.slug ? "border-signal-blue bg-signal-blue text-snow" : "border-white/10 bg-smoke text-ash-mist hover:text-snow"}`}>{item.label}</a>
+        ))}
+        {supportsCategoryFilter && quickCategories.map((item) => (
+          <a href={listHref(1, { ...activeFilters, category: item.slug })} aria-current={category === item.slug ? "true" : undefined} class={`whitespace-nowrap rounded-[4.5px] border px-3 py-1.5 text-caption font-bold tracking-caption transition-colors ${category === item.slug ? "border-signal-blue bg-signal-blue text-snow" : "border-white/10 bg-smoke text-ash-mist hover:text-snow"}`}>{item.label}</a>
+        ))}
+      </div>
     </section>
   )}
 
@@ -78,21 +94,38 @@ function listHref(nextPage: number, filters = activeFilters) {
     ))}
   </section>
 
-  <nav class="px-4 pt-8" aria-label="Phân trang">
+  <nav class="px-4 pt-12 pb-8" aria-label="Phân trang">
     <div class="flex items-center justify-between gap-3">
-      <a href={listHref(Math.max(1, currentPage - 1))} aria-disabled={currentPage <= 1} class="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white ring-1 ring-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-40">
+      <a href={listHref(Math.max(1, currentPage - 1))} aria-disabled={currentPage <= 1} class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-iron-veil transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40">
         <ChevronLeft className="h-4 w-4" /> Trang trước
       </a>
-      <a href={listHref(currentPage + 1)} aria-disabled={totalPages ? currentPage >= totalPages : false} class="inline-flex items-center gap-2 rounded-2xl bg-gold px-4 py-3 text-sm font-black text-black aria-disabled:pointer-events-none aria-disabled:opacity-40">
+      <a href={listHref(currentPage + 1)} aria-disabled={totalPages ? currentPage >= totalPages : false} class="inline-flex items-center gap-2 rounded-lg bg-transparent px-4 py-[10px] text-[14px] font-semibold tracking-[0.083em] text-snow ring-1 ring-inset ring-iron-veil transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40">
         Trang sau <ChevronRight className="h-4 w-4" />
       </a>
     </div>
-    <div class="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+    <div class="mt-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
       {pageNumbers.map((pageNumber) => (
-        <a href={listHref(pageNumber)} aria-current={pageNumber === currentPage ? "page" : undefined} class={`grid h-11 min-w-11 place-items-center rounded-2xl px-3 text-sm font-black ring-1 transition ${pageNumber === currentPage ? "bg-gold text-black ring-gold shadow-glow" : "bg-white/10 text-zinc-200 ring-white/10 hover:bg-white/15 hover:text-white"}`}>
+        <a href={listHref(pageNumber)} aria-current={pageNumber === currentPage ? "page" : undefined} class={`grid h-10 min-w-[40px] place-items-center rounded-lg px-3 text-[14px] font-semibold tracking-[0.083em] transition ${pageNumber === currentPage ? "bg-signal-blue text-snow" : "bg-transparent text-snow ring-1 ring-inset ring-iron-veil hover:bg-white/5 hover:ring-snow"}`}>
           {pageNumber}
         </a>
       ))}
     </div>
   </nav>
+
+  {(countries.length || categories.length) ? (
+    <section class="mx-4 mt-8 border-t border-white/10 pb-8 pt-6" aria-labelledby="all-filter-tags">
+      <div class="flex items-center justify-between gap-3">
+        <h2 id="all-filter-tags" class="text-caption font-bold uppercase tracking-caption text-iron-veil">Khám phá theo thẻ</h2>
+        {(country || category) && <a href={listHref(1, { country: "", category: "" })} class="text-caption font-bold text-glacier-beam hover:text-snow">Xóa bộ lọc</a>}
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {countries.map((item) => (
+          <a href={listHref(1, { ...activeFilters, country: item.slug })} aria-current={country === item.slug ? "true" : undefined} class={`rounded-[4.5px] border px-2.5 py-1.5 text-caption font-semibold transition-colors ${country === item.slug ? "border-signal-blue text-glacier-beam" : "border-white/10 text-iron-veil hover:border-white/20 hover:text-snow"}`}>{item.name}</a>
+        ))}
+        {categories.map((item) => (
+          <a href={listHref(1, { ...activeFilters, category: item.slug })} aria-current={category === item.slug ? "true" : undefined} class={`rounded-[4.5px] border px-2.5 py-1.5 text-caption font-semibold transition-colors ${category === item.slug ? "border-signal-blue text-glacier-beam" : "border-white/10 text-iron-veil hover:border-white/20 hover:text-snow"}`}>{item.name}</a>
+        ))}
+      </div>
+    </section>
+  ) : null}
 </BaseLayout>

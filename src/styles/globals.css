@@ -56,7 +56,7 @@
 
 :root {
   color-scheme: dark;
-  --bottom-nav-height: 84px;
+  --bottom-nav-height: 64px;
 }
 
 * {
@@ -95,9 +95,9 @@ button, input, select, textarea {
   padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
 }
 
-@media (orientation: landscape) and (max-height: 520px) {
+@media (orientation: landscape) and (max-height: 560px) {
   :root {
-    --bottom-nav-height: 52px;
+    --bottom-nav-height: 44px;
   }
 
   .watch-header {
@@ -133,16 +133,23 @@ button, input, select, textarea {
   }
 
   .bottom-nav {
-    padding-bottom: calc(4px + env(safe-area-inset-bottom));
-    padding-top: 4px;
+    padding-bottom: calc(2px + env(safe-area-inset-bottom));
+    padding-top: 2px;
+  }
+
+  .bottom-nav-grid {
+    height: 40px;
   }
 
   .bottom-nav-item {
-    padding-block: 5px;
+    min-height: 40px;
+    padding-block: 0;
   }
 
   .bottom-nav-icon {
+    height: 1.25rem;
     margin-bottom: 0;
+    width: 1.25rem;
   }
 
   .bottom-nav-label {
