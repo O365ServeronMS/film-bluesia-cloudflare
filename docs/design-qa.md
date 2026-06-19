@@ -1,9 +1,7 @@
 # Design QA — Home Cinematic Hero
 
 - Source visual truth: `C:\Users\X\AppData\Local\Temp\codex-clipboard-3837c71f-f929-4bea-aa9b-44f7e7b42204.png`
-- Desktop implementation screenshot: `docs/assets/hero-hbo-desktop.png`
-- Mobile implementation screenshot: `docs/assets/hero-hbo-mobile.png`
-- Combined comparison evidence: `docs/assets/hero-hbo-comparison.png`
+- Visual evidence: local-only screenshots under `docs/assets/` (Git-ignored to keep the repository lightweight).
 - Viewports: desktop 720 × 625; mobile 390 × 844
 - State: dark theme, Smart Spotlight hero with first content row visible
 

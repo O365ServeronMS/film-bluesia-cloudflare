@@ -120,7 +120,7 @@ const movieCard = {
   </Fragment>
 
   <article>
-    <section class="relative min-h-[560px] overflow-hidden">
+    <section class="relative overflow-hidden">
       {heroImage && (
         <picture>
           <source media="(max-width: 767px)" srcset={heroSigned?.m || heroImage} />
@@ -129,7 +129,7 @@ const movieCard = {
         </picture>
       )}
       <div class="absolute inset-0 bg-gradient-to-b from-obsidian/30 via-obsidian/80 to-obsidian"></div>
-      <div class="relative z-10 px-4 pb-2 pt-5">
+      <div class="relative z-10 px-4 pb-4 pt-5">
         <a href={backHref} data-nav-back aria-label="Quay lại danh sách phim" class="grid h-11 w-11 place-items-center rounded-lg bg-obsidian/70 text-snow transition-colors hover:bg-smoke">
           <ArrowLeft className="h-5 w-5" />
         </a>
@@ -169,7 +169,7 @@ const movieCard = {
       </div>
 
       {movie.episodes.length ? (
-        <div class="mt-8">
+        <div class="mt-4">
           <h2 class="inline-flex items-center gap-2 text-heading-sm font-bold text-snow"><ListVideo className="h-5 w-5 text-signal-blue" /> Danh sách tập phim</h2>
           {movie.episodes.map((episodeServer, episodeServerIndex) => (
             <div class="mt-4 rounded-lg border border-white/10 bg-smoke p-4">

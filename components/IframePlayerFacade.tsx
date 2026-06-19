@@ -44,13 +44,11 @@ export function IframePlayerFacade({ onError, src, poster, title }: IframePlayer
         />
       ) : null}
       <span className="absolute inset-0 bg-obsidian/80 transition-colors duration-300 group-hover:bg-obsidian/65" />
-      <span className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-        <span className="flex h-20 w-20 items-center justify-center rounded-full bg-signal-blue text-snow transition-transform duration-200 group-hover:scale-105 sm:h-24 sm:w-24 md:h-28 md:w-28">
-          <Play className="ml-1 h-10 w-10 fill-current sm:h-12 sm:w-12 md:ml-2 md:h-14 md:w-14" aria-hidden="true" />
-        </span>
-        <span className="mt-6 flex flex-col items-center gap-2">
-          <span className="text-heading-sm font-semibold leading-heading-sm text-snow">Bấm Play để bắt đầu</span>
-          <span className="mx-auto max-w-[320px] text-center text-body font-normal leading-body text-ash-mist">Video chỉ được tải sau thao tác này.</span>
+      <span className="absolute inset-0 grid place-items-center p-4">
+        <span className="player-play-pulse rounded-full">
+          <span className="flex h-[96px] w-[96px] items-center justify-center rounded-full border border-snow/20 bg-signal-blue text-snow shadow-[0_10px_32px_rgba(0,0,0,0.45)] transition duration-200 group-hover:scale-105 group-hover:bg-signal-blue/90 sm:h-[112px] sm:w-[112px]">
+            <Play className="ml-1.5 h-[44px] w-[44px] fill-current sm:ml-2 sm:h-[52px] sm:w-[52px]" aria-hidden="true" />
+          </span>
         </span>
       </span>
     </button>
