@@ -285,8 +285,8 @@ function detailLabels(value?: SourceLabel[] | string) {
 
 const hiddenListSlugs = new Set(["khu-rung-than-bi"]);
 
-function visibleListCards(items: MovieCard[]) {
-  return items.filter((item) => item.slug && !hiddenListSlugs.has(item.slug));
+function visibleListCards(items: MovieCard[], preserveOfficialLatest = false) {
+  return items.filter((item) => item.slug && (preserveOfficialLatest || !hiddenListSlugs.has(item.slug)));
 }
 
 export async function normalizeCard(raw: SourceMovie, cdn?: string): Promise<MovieCard> {
@@ -370,7 +370,7 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
   const query = new URLSearchParams({
     page: String(safePage),
     limit: String(safeLimit),
-    sort_field: "modified",
+    sort_field: apiListType === "phim-moi-cap-nhat" ? "modified.time" : "modified",
     sort_type: "desc"
   });
 
@@ -410,7 +410,7 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
 
   return {
     title: titleParts.join(" - "),
-    items: visibleListCards(cards),
+    items: visibleListCards(cards, apiListType === "phim-moi-cap-nhat"),
     page: Number(pagination?.currentPage || safePage),
     totalPages: Number(pagination?.totalPages || pagination?.total_pages || computedTotalPages) || undefined
   };

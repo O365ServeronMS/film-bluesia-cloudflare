@@ -31,6 +31,7 @@
 - `npm run build`: create the Cloudflare server build.
 - `npm run preview`: build, then serve `dist/_worker.js/index.js` and static assets with Wrangler locally.
 - `npm run test:image-normalization`: run the deterministic image metadata normalization checks.
+- `npm run test:ophim-latest-order`: verify the latest OPhim request uses `modified.time` and preserves the source's first 24 movies in order.
 - `npm run scan:image-hosts`: fetch the latest OPhim page and report observed poster/thumb hosts; this is a networked diagnostic and does not modify the allowlist.
 - `npm run deploy`: build and deploy through Wrangler; run only when deployment is explicitly requested.
 
