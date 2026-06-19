@@ -438,7 +438,7 @@ export async function searchMovies(keyword: string, page = 1, limit = 24): Promi
 
 export async function getHome(): Promise<HomePayload> {
   const [latest, single, series, animation, tv, cinema, singleAuMy, singleHanQuoc] = await Promise.allSettled([
-    getList("phim-moi-cap-nhat", 1, 18),
+    getList("phim-moi-cap-nhat", 1, 24),
     getList("phim-le", 1, 18),
     getList("phim-bo", 1, 12),
     getList("hoat-hinh", 1, 12),
@@ -472,6 +472,7 @@ export async function getHome(): Promise<HomePayload> {
   return {
     hero: buildSmartSpotlight(candidates, 24),
     sections: [
+      { title: "Phim mới cập nhật", href: "/list/phim-moi-cap-nhat", items: latestValue.items.slice(0, 24) },
       { title: "Phim lẻ", href: "/list/phim-le", items: singleValue.items },
       { title: "Phim bộ", href: "/list/phim-bo", items: seriesValue.items },
       { title: "TV Show", href: "/list/tv-shows", items: tvValue.items },

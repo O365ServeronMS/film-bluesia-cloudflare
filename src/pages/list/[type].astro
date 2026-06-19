@@ -50,6 +50,7 @@ const currentPage = data.page || page;
 const totalPages = data.totalPages;
 const activeFilters = { country, category };
 const typeTitles: Record<string, string> = {
+  "phim-moi-cap-nhat": "Phim mới cập nhật",
   "phim-le": "Phim lẻ",
   "phim-bo": "Phim bộ",
   "tv-shows": "TV Show",
@@ -88,8 +89,8 @@ function listHref(nextPage: number, filters = activeFilters) {
   )}
 
   <section class="grid grid-cols-3 gap-3 px-4 pt-5 sm:grid-cols-4">
-    {data.items.map((movie, index) => (
-      <MovieCard movie={movie} compact headingLevel={2} priority={index < 4} navSourceKey={type} returnTo={returnTo} />
+    {data.items.map((movie) => (
+      <MovieCard movie={movie} compact headingLevel={2} navSourceKey={type} returnTo={returnTo} />
     ))}
   </section>
 

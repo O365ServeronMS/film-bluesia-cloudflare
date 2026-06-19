@@ -2,7 +2,21 @@ import { ChevronRight } from "lucide-react";
 import type { MovieCard as MovieCardType } from "@/lib/types";
 import { MovieCard } from "@/components/MovieCard";
 
-export function SectionRow({ title, href, items, returnTo = "", spotlight = false }: { title: string; href: string; items: MovieCardType[]; returnTo?: string; spotlight?: boolean }) {
+export function SectionRow({
+  title,
+  href,
+  items,
+  returnTo = "",
+  spotlight = false,
+  itemLimit = 8
+}: {
+  title: string;
+  href: string;
+  items: MovieCardType[];
+  returnTo?: string;
+  spotlight?: boolean;
+  itemLimit?: number;
+}) {
   if (!items.length) return null;
   return (
     <section className={spotlight ? "relative z-20 -mt-8 px-4" : "mt-8 px-4"}>
@@ -13,7 +27,7 @@ export function SectionRow({ title, href, items, returnTo = "", spotlight = fals
         </a>
       </div>
       <div className={spotlight ? "no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2" : "grid grid-cols-3 gap-3 sm:grid-cols-4"}>
-        {items.slice(0, 8).map((movie, index) =>
+        {items.slice(0, itemLimit).map((movie, index) =>
           spotlight ? (
             <div key={movie.slug} className="w-[132px] shrink-0 snap-start sm:w-[150px]">
               <MovieCard movie={movie} compact returnTo={returnTo} />

@@ -25,6 +25,13 @@ const heroPreloadSrcSet = firstHeroSigned
     <HeroSlider client:load items={home.hero} />
   </div>
   {home.sections.map((section, index) => (
-    <SectionRow title={section.title} href={section.href} items={section.items} returnTo={returnTo} spotlight={index === 0} />
+    <SectionRow
+      title={section.title}
+      href={section.href}
+      items={section.items}
+      returnTo={returnTo}
+      spotlight={index === 0}
+      itemLimit={section.href === "/list/phim-moi-cap-nhat" ? 24 : 8}
+    />
   ))}
 </BaseLayout>
