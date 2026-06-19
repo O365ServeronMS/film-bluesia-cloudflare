@@ -3,11 +3,19 @@
 import { Clock3, Heart, UserRound } from "lucide-react";
 import { SearchSuggest } from "@/components/SearchSuggest";
 
-export function TopBar() {
+export function TopBar({ overlay = false }: { overlay?: boolean }) {
   return (
-    <header className="sticky top-0 z-40 bg-obsidian/80 px-4 py-4 transition-colors">
-      <div className="flex items-center gap-3">
-        <SearchSuggest />
+    <header className={overlay ? "absolute inset-x-0 top-0 z-40 px-4 py-3" : "sticky top-0 z-40 bg-obsidian/90 px-4 py-4 backdrop-blur-md"}>
+      <div className="flex items-center gap-2 sm:gap-3">
+        {overlay ? (
+          <a href="/" aria-label="Bluesia Cinema" className="mr-auto inline-flex items-center gap-2 text-snow drop-shadow-md">
+            <img src="/icon.svg" alt="" className="h-7 w-7 rounded-md" />
+            <span className="hidden text-xs font-black uppercase tracking-[0.16em] sm:inline">Bluesia</span>
+          </a>
+        ) : null}
+        <div className={overlay ? "hidden w-[280px] min-w-0 sm:block" : "min-w-0 flex-1"}>
+          <SearchSuggest />
+        </div>
         <a href="/favorites" aria-label="Phim yêu thích" className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-transparent text-ash-mist transition hover:bg-smoke hover:text-signal-blue">
           <Heart className="h-5 w-5" />
         </a>

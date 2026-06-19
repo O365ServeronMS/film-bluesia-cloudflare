@@ -8,7 +8,7 @@ import { getHome } from "@/lib/ophim";
 
 const home = await getHome();
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
-const firstHeroSigned = home.hero[0]?.posterSigned || home.hero[0]?.thumbSigned;
+const firstHeroSigned = home.hero[0]?.thumbSigned || home.hero[0]?.posterSigned;
 const heroPreloadSrcSet = firstHeroSigned
   ? `${firstHeroSigned.m} 780w, ${firstHeroSigned.d} 1280w`
   : undefined;
@@ -17,12 +17,14 @@ const heroPreloadSrcSet = firstHeroSigned
 <BaseLayout>
   {heroPreloadSrcSet && (
     <Fragment slot="head">
-      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 280px, 240px" />
+      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 720px, 100vw" />
     </Fragment>
   )}
-  <TopBar client:load />
-  <HeroSlider client:load items={home.hero} />
-  {home.sections.map((section) => (
-    <SectionRow title={section.title} href={section.href} items={section.items} returnTo={returnTo} />
+  <div class="relative">
+    <TopBar client:load overlay />
+    <HeroSlider client:load items={home.hero} />
+  </div>
+  {home.sections.map((section, index) => (
+    <SectionRow title={section.title} href={section.href} items={section.items} returnTo={returnTo} spotlight={index === 0} />
   ))}
 </BaseLayout>
