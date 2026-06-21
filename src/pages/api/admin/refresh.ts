@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { env as cloudflareEnv } from "cloudflare:workers";
 import { beginKvWriteBudget, finishKvWriteBudget } from "@/lib/cache";
 import {
   DAILY_KV_WRITE_HARD_LIMIT,
@@ -24,7 +25,7 @@ type RateLimitState = {
   resetAt: number;
 };
 
-type AdminRefreshEnv = NonNullable<App.Locals["runtime"]>["env"];
+type AdminRefreshEnv = CloudflareRuntime["env"];
 
 function json(data: unknown, status = 200) {
   return Response.json(data, {
@@ -79,8 +80,8 @@ async function parseBody(request: Request): Promise<AdminRefreshBody> {
   }
 }
 
-export const POST: APIRoute = async ({ locals, request }) => {
-  const env = (locals.runtime?.env || {}) as AdminRefreshEnv;
+export const POST: APIRoute = async ({ request }) => {
+  const env = cloudflareEnv as unknown as AdminRefreshEnv;
   setRuntimeEnv(env);
 
   const expectedToken = String(env?.ADMIN_REFRESH_TOKEN || "");

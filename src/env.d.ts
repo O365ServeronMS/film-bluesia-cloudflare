@@ -10,7 +10,6 @@ type KVNamespace = {
     cursor?: string;
   }>;
 };
-
 type CloudflareRuntime = {
   env: {
     KV?: KVNamespace;
@@ -31,9 +30,3 @@ type CloudflareRuntime = {
     VSEMBED_MOBILE_EMBED_HOST?: string;
   };
 };
-
-declare namespace App {
-  interface Locals {
-    runtime?: CloudflareRuntime;
-  }
-}

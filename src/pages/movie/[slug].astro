@@ -6,7 +6,7 @@ import { MoviePlayer } from "@/components/MoviePlayer";
 import { episodeWatchKey, findEpisodeByWatchKey } from "@/lib/episodes";
 import { fallbackReturnToForSource, getBackHref, hrefWithReturnTo, inferNavSourceFromMovie, navSourceFromSearchParams, returnToFromSearchParams } from "@/lib/navigation";
 import { displayEpisodeServerName, getMovie, movieDetailCachePolicy } from "@/lib/ophim";
-import { normalizePlaybackUrl } from "@/lib/playback";
+import { isMobilePlaybackUserAgent, normalizePlaybackUrl } from "@/lib/playback";
 import type { MovieCard } from "@/lib/types";
 import { getDisplayRating, stripHtml } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ const requestedPlayer = String(Astro.url.searchParams.get("player") || "").toLow
 const forceEmbed = requestedPlayer === "embed";
 const forceHls = requestedPlayer === "hls";
 const userAgent = Astro.request.headers.get("user-agent") || "";
-const mobileUA = /android|iphone|ipad|ipod|mobile|iemobile|opera mini|webos/i.test(userAgent);
+const mobileUA = isMobilePlaybackUserAgent(userAgent);
 
 function mobileVidsrcHost() {
   const host = String(process.env.VSEMBED_MOBILE_EMBED_HOST || "vsembed.su").trim().toLowerCase();

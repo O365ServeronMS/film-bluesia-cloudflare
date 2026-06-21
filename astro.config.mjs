@@ -5,20 +5,9 @@ import react from "@astrojs/react";
 export default defineConfig({
   output: "server",
   site: "https://film.bluesia.net",
-  session: {
-    driver: "memory"
-  },
   integrations: [react()],
   adapter: cloudflare({
-    imageService: "passthrough",
-    cloudflareModules: false,
-    workerEntryPoint: {
-      path: "src/worker.ts"
-    },
-    platformProxy: {
-      enabled: false,
-      persist: false
-    }
+    imageService: "passthrough"
   }),
   vite: {
     cacheDir: process.env.VITE_CACHE_DIR || ".vite-cache-build",

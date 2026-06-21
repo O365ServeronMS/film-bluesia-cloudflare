@@ -1,4 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
+import { env as cloudflareEnv } from "cloudflare:workers";
+import { isMobilePlaybackUserAgent } from "@/lib/playback";
 import { setCacheBypassRefresh, setRuntimeEnv } from "@/lib/runtime-env";
 
 const CACHEABLE_LIST_TYPES = new Set(["phim-le", "phim-bo", "tv-shows", "hoat-hinh"]);
@@ -8,6 +10,7 @@ const MOVIE_LONG_HTML_TTL_SECONDS = 7776000;
 const MOVIE_SHORT_HTML_TTL_SECONDS = 86400;
 const STALE_WHILE_REVALIDATE_SECONDS = 1800;
 const DEFAULT_HTML_CACHE_VERSION = "2026-06-01-ophim-imdb-v5";
+const MOVIE_PLAYBACK_PARAMS = ["server", "ep", "player", "mirror", "play"] as const;
 
 type HtmlCachePolicy = {
   browserMaxAge: number;
@@ -73,11 +76,39 @@ function htmlCacheVersion(env: Record<string, unknown> | undefined) {
   return String(env?.HTML_CACHE_VERSION || process.env.HTML_CACHE_VERSION || DEFAULT_HTML_CACHE_VERSION);
 }
 
-function canonicalCacheRequest(url: URL, version: string) {
+function canonicalHtmlSearch(url: URL) {
+  const path = normalizedPath(url.pathname);
+  const source = url.searchParams;
+  const canonical = new URLSearchParams();
+
+  if (/^\/list\/[^/]+$/.test(path)) {
+    for (const key of ["page", "country", "category"]) {
+      const value = source.get(key);
+      if (value) canonical.set(key, value);
+    }
+  } else if (/^\/movie\/[^/]+$/.test(path)) {
+    const returnTo = source.get("returnTo");
+    if (returnTo) canonical.set("returnTo", returnTo);
+  } else if (/^\/(category|the-loai|country|quoc-gia|year|nam)\/[^/]+$/.test(path)) {
+    const page = source.get("page");
+    if (page) canonical.set("page", page);
+  }
+
+  return canonical;
+}
+
+function hasMoviePlaybackVariant(url: URL) {
+  const path = normalizedPath(url.pathname);
+  return /^\/movie\/[^/]+$/.test(path) && MOVIE_PLAYBACK_PARAMS.some((key) => url.searchParams.has(key));
+}
+
+function canonicalCacheRequest(url: URL, version: string, request: Request) {
   const cacheUrl = new URL(url.toString());
-  cacheUrl.searchParams.delete("refresh");
-  cacheUrl.searchParams.delete("token");
-  cacheUrl.searchParams.sort();
+  cacheUrl.search = canonicalHtmlSearch(url).toString();
+  if (/^\/movie\/[^/]+$/.test(normalizedPath(url.pathname))) {
+    const userAgent = request.headers.get("user-agent") || "";
+    cacheUrl.searchParams.set("__playback_device", isMobilePlaybackUserAgent(userAgent) ? "mobile" : "desktop");
+  }
   cacheUrl.searchParams.set("__html_cache_version", version);
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
@@ -112,12 +143,12 @@ function applyNoStoreHeaders(response: Response) {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const env = context.locals.runtime?.env as Record<string, unknown> | undefined;
+  const env = cloudflareEnv as unknown as Record<string, unknown>;
   setRuntimeEnv(env);
   const bypassRefresh = validRefreshBypass(context.url, env);
   setCacheBypassRefresh(bypassRefresh);
   const cacheVersion = htmlCacheVersion(env);
-  const cacheRequest = canonicalCacheRequest(context.url, cacheVersion);
+  const cacheRequest = canonicalCacheRequest(context.url, cacheVersion, context.request);
   const initialPolicy = publicHtmlPolicy(context.url.pathname);
   const canUseHtmlCache = ["GET", "HEAD"].includes(context.request.method) &&
     isHtmlRequest(context.request) &&
@@ -163,6 +194,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const policy = publicHtmlPolicy(context.url.pathname);
   if (policy) {
+    if (hasMoviePlaybackVariant(context.url)) {
+      applyNoStoreHeaders(response);
+      response.headers.set("X-Film-Bluesia-Cache", "HTML_CACHE_BYPASS_PLAYBACK_VARIANT");
+      response.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
+      return response;
+    }
+
     const movieCacheClass = response.headers.get("X-Film-Bluesia-Movie-Cache-Class");
     const finalPolicy = movieCacheClass === "full"
       ? PUBLIC_HTML_POLICIES.movieLong

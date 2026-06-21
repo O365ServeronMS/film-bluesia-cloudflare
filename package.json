@@ -9,8 +9,8 @@
     "test:kv-write-resilience": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-kv-write-resilience.mjs",
     "test:ophim-latest-order": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-ophim-latest-order.mjs",
     "scan:image-hosts": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/scan-ophim-image-hosts.mjs",
-    "preview": "astro build && wrangler dev dist/_worker.js/index.js --assets dist",
-    "deploy": "astro build && wrangler deploy dist/_worker.js/index.js --assets dist"
+    "preview": "astro build && astro preview",
+    "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.7.0",

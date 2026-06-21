@@ -418,20 +418,26 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
 
 export async function searchMovies(keyword: string, page = 1, limit = 24): Promise<ListPayload> {
   const q = keyword.trim();
-  if (!q) return { title: "Tìm kiếm", items: [], page };
-  const payload = await fetchJson<SourceListPayload>(`/v1/api/tim-kiem?keyword=${encodeURIComponent(q)}&page=${page}&limit=${limit}`, 300);
+  const parsedPage = Number(page);
+  const parsedLimit = Number(limit);
+  const safePage = Number.isFinite(parsedPage) ? Math.max(1, Math.trunc(parsedPage)) : 1;
+  const safeLimit = Number.isFinite(parsedLimit)
+    ? Math.min(64, Math.max(12, Math.trunc(parsedLimit)))
+    : 24;
+  if (!q) return { title: "Tìm kiếm", items: [], page: safePage };
+  const payload = await fetchJson<SourceListPayload>(`/v1/api/tim-kiem?keyword=${encodeURIComponent(q)}&page=${safePage}&limit=${safeLimit}`, 300);
   const { items, cdn, data } = getItems(payload);
   const pagination = data?.params?.pagination || {};
   const cards = await Promise.all(items.map((item) => normalizeCard(item, cdn)));
   
   const totalItems = Number(pagination?.totalItems || 0);
-  const totalItemsPerPage = Number(pagination?.totalItemsPerPage || limit);
+  const totalItemsPerPage = Number(pagination?.totalItemsPerPage || safeLimit);
   const computedTotalPages = totalItems > 0 && totalItemsPerPage > 0 ? Math.ceil(totalItems / totalItemsPerPage) : 0;
 
   return {
     title: `Tìm kiếm: ${q}`,
     items: cards.filter((item: MovieCard) => item.slug),
-    page: Number(pagination?.currentPage || page),
+    page: Number(pagination?.currentPage || safePage),
     totalPages: Number(pagination?.totalPages || pagination?.total_pages || computedTotalPages) || undefined
   };
 }
@@ -457,6 +463,17 @@ export async function getHome(): Promise<HomePayload> {
   const cinemaValue = value(cinema);
   const singleAuMyValue = value(singleAuMy);
   const singleHanQuocValue = value(singleHanQuoc);
+
+  const results = [latest, single, series, animation, tv, cinema, singleAuMy, singleHanQuoc];
+  const fulfilledItemCount = results.reduce((count, result) =>
+    count + (result.status === "fulfilled" ? result.value.items.length : 0), 0);
+  const firstFailure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+  if (fulfilledItemCount === 0) {
+    const reason = firstFailure?.reason;
+    throw reason instanceof Error
+      ? reason
+      : new Error(reason ? String(reason) : "All home catalog sources returned no movies");
+  }
 
   const candidates: SpotlightCandidate[] = [
     ...latestValue.items.map((movie, order) => ({ movie, source: "latest", order })),

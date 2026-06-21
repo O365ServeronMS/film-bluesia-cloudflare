@@ -195,10 +195,17 @@ export async function finishKvWriteBudget() {
 
   if (state.kv && state.writes > 0) {
     const updatedAt = new Date().toISOString();
-    await state.kv.put(state.key, JSON.stringify({ count: snapshot.daily_write_count, updatedAt }), {
-      expirationTtl: 60 * 60 * 48,
-      metadata: { namespace: "kvstats", updatedAt }
-    });
+    try {
+      await state.kv.put(state.key, JSON.stringify({ count: snapshot.daily_write_count, updatedAt }), {
+        expirationTtl: 60 * 60 * 48,
+        metadata: { namespace: "kvstats", updatedAt }
+      });
+    } catch (error) {
+      cacheLog("KV_WRITE_BUDGET_PERSIST_FAILED", {
+        key: state.key,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
   return snapshot;
@@ -317,10 +324,22 @@ export async function writeJsonCache(namespace: string, key: string, value: unkn
     value
   };
 
-  await kv.put(objectKey, JSON.stringify(envelope), {
-    expirationTtl: ttlSeconds,
-    metadata: { namespace, sourceUrl: sourceUrl || "", cachedAt: envelope.cachedAt, hash }
-  });
+  try {
+    await kv.put(objectKey, JSON.stringify(envelope), {
+      expirationTtl: ttlSeconds,
+      metadata: { namespace, sourceUrl: sourceUrl || "", cachedAt: envelope.cachedAt, hash }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    cacheLog("KV_METADATA_WRITE", {
+      namespace,
+      key: objectKey,
+      skipped: true,
+      reason: "write-failed",
+      error: message
+    });
+    return { skipped: true, reason: "write-failed", hash };
+  }
   lastKvWriteSecond.set(objectKey, nowSecond);
   if (budget) budget.writes += 1;
   cacheLog("KV_METADATA_WRITE", { namespace, key: objectKey, ttlSeconds, hash });
