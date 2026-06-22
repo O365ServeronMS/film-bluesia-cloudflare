@@ -1,4 +1,4 @@
-import { Heart, Star } from "lucide-react";
+import { Heart } from "lucide-react";
 import type { MovieCard as MovieCardType } from "@/lib/types";
 import { hrefWithReturnTo } from "@/lib/navigation";
 import { getDisplayRating } from "@/lib/utils";
@@ -13,6 +13,16 @@ function validHttpImage(value?: string) {
   } catch {
     return "";
   }
+}
+
+function movieStatus(movie: MovieCardType) {
+  const episode = String(movie.episodeCurrent || "").trim();
+  if (/trailer/i.test(episode)) return "TRAILER";
+
+  const episodeMatch = episode.match(/t(?:ập|ap)\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if (episodeMatch) return `TẬP ${episodeMatch[1]}`;
+
+  return /(?:^|\b)(?:f?hd)(?:\b|$)/i.test(String(movie.quality || "")) ? "HD" : "";
 }
 
 export function MovieCard({
@@ -52,6 +62,7 @@ export function MovieCard({
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
   const displayRating = getDisplayRating(movie);
+  const status = movieStatus(movie);
 
   const detailHref = hrefWithReturnTo(`/movie/${movie.slug}`, returnTo, navSourceKey);
 
@@ -75,22 +86,21 @@ export function MovieCard({
           />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
             {displayRating ? (
-              <div className="flex flex-col items-start gap-1">
-                <span className="inline-flex items-center gap-1 rounded-[4.5px] bg-obsidian/70 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">
-                  <Star className="h-3 w-3 fill-current text-snow" /> {displayRating.text}
-                </span>
-              </div>
+              <span className="inline-flex min-h-5 items-center rounded-[4.5px] bg-[#f5c518] px-1.5 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.04em] text-black">
+                {displayRating.text}
+              </span>
             ) : (
               <span aria-hidden="true" />
             )}
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-obsidian/80 text-snow">
-              <Heart className="h-4 w-4" />
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-obsidian/75 text-snow">
+              <Heart className="h-3.5 w-3.5" />
             </span>
           </div>
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-obsidian/90 via-obsidian/50 to-transparent p-2 pt-12">
-            <span className="rounded-[4.5px] bg-obsidian/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">{movie.episodeCurrent || "Full"}</span>
-            {movie.quality && <span className="rounded-[4.5px] bg-snow/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.083em] text-snow">{movie.quality}</span>}
-          </div>
+          {status && (
+            <span className="absolute bottom-2 left-2 inline-flex min-h-6 items-center rounded-[4.5px] bg-signal-blue px-2 py-1 text-[11px] font-bold uppercase leading-none tracking-[0.083em] text-snow">
+              {status}
+            </span>
+          )}
         </div>
         <div className="p-3">
           <Title className={compact ? "line-clamp-2 text-body font-bold leading-body text-snow" : "line-clamp-2 text-body-lg font-bold leading-body-lg text-snow"}>{movie.name}</Title>
