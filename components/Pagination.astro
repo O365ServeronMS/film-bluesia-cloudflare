@@ -52,27 +52,34 @@ const nextUrl = (!totalPages || currentPage < totalPages) ? buildUrl(currentPage
       href={prevUrl} 
       aria-label="Trang trước"
       aria-disabled={!prevUrl} 
-      class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
+      class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40 sm:h-10 sm:w-10"
     >
       <ChevronLeft className="h-5 w-5" /> 
     </a>
 
-    <div class="hidden sm:flex items-center gap-1 mx-4">
+    <div class="mx-0 flex items-center gap-0 sm:mx-4 sm:gap-1">
       {items.map((item) => {
         if (item === "ellipsis") {
           return (
-            <div class="flex h-10 w-10 items-center justify-center text-iron-veil" aria-hidden="true">
+            <div class="flex h-[32px] w-3 items-center justify-center text-iron-veil sm:h-10 sm:w-10" aria-hidden="true">
               <MoreHorizontal className="h-4 w-4" />
             </div>
           );
         }
         
-        const isCurrent = item === currentPage;
+        const distance = Math.abs(item - currentPage);
+        const isCurrent = distance === 0;
+        const isAdjacent = distance === 1;
+        const sizeClass = isCurrent
+          ? "h-[48px] min-w-[36px] px-1.5 text-[18px] sm:h-[60px] sm:min-w-[60px] sm:px-3 sm:text-[21px]"
+          : isAdjacent
+            ? "h-[38px] min-w-[29px] px-1 text-[14px] sm:h-[48px] sm:min-w-[48px] sm:px-2 sm:text-[17px]"
+            : "h-[32px] min-w-[24px] px-0.5 text-[12px] sm:h-10 sm:min-w-[40px] sm:px-2 sm:text-[14px]";
         return (
           <a 
             href={buildUrl(item)} 
             aria-current={isCurrent ? "page" : undefined} 
-            class={`grid h-10 min-w-[40px] place-items-center rounded-lg px-2 text-[14px] font-semibold tracking-[0.083em] transition ${isCurrent ? "bg-signal-blue text-snow" : "bg-transparent text-ash-mist hover:bg-white/5 hover:text-snow"}`}
+            class={`grid place-items-center rounded-lg font-semibold tracking-[0.04em] transition sm:tracking-[0.083em] ${sizeClass} ${isCurrent ? "bg-signal-blue text-snow ring-1 ring-inset ring-glacier-beam" : isAdjacent ? "bg-transparent text-snow hover:bg-white/5" : "bg-transparent text-ash-mist hover:bg-white/5 hover:text-snow"}`}
           >
             {item}
           </a>
@@ -80,21 +87,11 @@ const nextUrl = (!totalPages || currentPage < totalPages) ? buildUrl(currentPage
       })}
     </div>
 
-    {totalPages ? (
-      <div class="flex sm:hidden items-center justify-center text-snow text-[14px] font-semibold tracking-[0.083em] px-4">
-        {currentPage} / {totalPages}
-      </div>
-    ) : (
-      <div class="flex sm:hidden items-center justify-center text-snow text-[14px] font-semibold tracking-[0.083em] px-4">
-        {currentPage}
-      </div>
-    )}
-
     <a 
       href={nextUrl} 
       aria-label="Trang sau"
       aria-disabled={!nextUrl} 
-      class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40"
+      class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-snow ring-1 ring-inset ring-white/20 transition hover:bg-white/5 hover:ring-snow aria-disabled:pointer-events-none aria-disabled:opacity-40 sm:h-10 sm:w-10"
     >
       <ChevronRight className="h-5 w-5" />
     </a>
