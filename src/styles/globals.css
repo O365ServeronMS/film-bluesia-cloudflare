@@ -68,6 +68,7 @@ html {
   background: var(--color-obsidian);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -75,12 +76,12 @@ body {
   margin: 0;
   background: var(--color-obsidian);
   color: var(--color-snow);
+  overflow-x: clip;
 }
 
 button, input, select, textarea {
   font: inherit;
 }
-
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
