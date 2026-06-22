@@ -148,7 +148,7 @@ export function BottomNav({
                 devLog("NAV_CLICK_TARGET", { href: item.href, active: item.key });
               }}
               className={cn(
-                "bottom-nav-item flex min-h-12 flex-col items-center justify-center rounded-lg px-1 py-1 text-caption font-semibold tracking-caption text-iron-veil transition-colors",
+                "bottom-nav-item flex min-h-12 flex-col items-center justify-center rounded-lg px-1 py-1 text-caption font-semibold tracking-caption text-ash-mist transition-colors",
                 active && "text-signal-blue"
               )}
             >

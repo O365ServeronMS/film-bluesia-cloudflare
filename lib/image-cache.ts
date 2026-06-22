@@ -1,4 +1,5 @@
 import { runtimeEnv } from "@/lib/runtime-env";
+import { validateImageSourceUrl } from "@/lib/image-source-registry";
 
 export type ImageVariant = "m" | "d";
 
@@ -6,6 +7,8 @@ export type SignedImagePair = {
   m: string;
   d: string;
 };
+
+const warnedRejectedHosts = new Set<string>();
 
 function envString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -35,12 +38,20 @@ async function hmacSha256Hex(secret: string, text: string) {
 export async function buildCachedImageUrl(upstreamUrl: string | undefined, variant: ImageVariant): Promise<string> {
   if (!upstreamUrl) return "";
 
-  try {
-    const urlObj = new URL(upstreamUrl);
-    if (!["http:", "https:"].includes(urlObj.protocol)) return upstreamUrl;
-  } catch {
-    return upstreamUrl;
+  const validation = validateImageSourceUrl(upstreamUrl);
+  if (!validation.ok) {
+    const warningKey = validation.host || validation.error;
+    if (!warnedRejectedHosts.has(warningKey)) {
+      warnedRejectedHosts.add(warningKey);
+      console.warn("[image-cache] Rejected image source", {
+        host: validation.host,
+        error: validation.error,
+        reason: validation.reason
+      });
+    }
+    return "";
   }
+  const normalizedUrl = validation.url.toString();
 
   const env = runtimeEnv() as Record<string, unknown> | undefined;
   const metaEnv = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : undefined;
@@ -62,11 +73,10 @@ export async function buildCachedImageUrl(upstreamUrl: string | undefined, varia
     if (!secret && processEnv?.NODE_ENV !== "production") {
       console.warn("[image-cache] Missing IMAGE_CACHE_SIGNING_SECRET, falling back to upstream URL");
     }
-    return upstreamUrl;
+    return normalizedUrl;
   }
 
   try {
-    const normalizedUrl = upstreamUrl;
     const hash = await sha256Hex(normalizedUrl);
     const version = "v1";
     const payload = `${version}\n${variant}\n${hash}\n${normalizedUrl}`;
@@ -75,7 +85,7 @@ export async function buildCachedImageUrl(upstreamUrl: string | undefined, varia
     return `${cacheBase.replace(/\/$/, "")}/i/${variant}/${hash}.webp?url=${encodeURIComponent(normalizedUrl)}&sig=${version}.${signatureHex}`;
   } catch (error) {
     console.error("[image-cache] Failed to sign image URL", error);
-    return upstreamUrl;
+    return normalizedUrl;
   }
 }
 

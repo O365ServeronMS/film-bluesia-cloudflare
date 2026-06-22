@@ -5,10 +5,8 @@ const DEFAULT_ALLOWED_HOSTS = [
   "img.ophim1.com"
 ];
 
-const DEFAULT_ALLOWED_SUFFIXES = [
-  ".ophim.live",
-  ".ophim1.com"
-];
+const DEFAULT_ALLOWED_SUFFIXES: string[] = [];
+const BLOCKED_MEDIA_PATH = /\.(?:m3u8|mpd|ts|m4s|mp4|mkv|avi|mov|webm|vtt|srt|svg)$/i;
 
 export type ImageSourceRegistry = {
   allowedHosts: Set<string>;
@@ -76,12 +74,21 @@ export function validateImageSourceUrl(value: string, registry = imageSourceRegi
     };
   }
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
+  if (url.protocol !== "https:") {
     return {
       ok: false,
       host: normalizeHost(url.hostname),
       error: "IMAGE_URL_INVALID",
-      reason: "Image URL must use http or https"
+      reason: "Image URL must use https"
+    };
+  }
+
+  if (url.username || url.password || url.port || url.hash) {
+    return {
+      ok: false,
+      host: normalizeHost(url.hostname),
+      error: "IMAGE_URL_INVALID",
+      reason: "Image URL must not contain credentials, a custom port, or a fragment"
     };
   }
 
@@ -94,6 +101,15 @@ export function validateImageSourceUrl(value: string, registry = imageSourceRegi
       host,
       error: "IMAGE_HOST_NOT_ALLOWED",
       reason: "IP addresses, localhost, and private network hosts are not allowed"
+    };
+  }
+
+  if (BLOCKED_MEDIA_PATH.test(url.pathname)) {
+    return {
+      ok: false,
+      host,
+      error: "IMAGE_URL_INVALID",
+      reason: "Video, playlist, subtitle, and SVG sources are not allowed"
     };
   }
 

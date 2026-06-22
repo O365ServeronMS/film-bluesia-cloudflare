@@ -26,6 +26,9 @@ type CloudflareRuntime = {
     OPHIM_BASE_URL?: string;
     OPHIM_REFRESH_MAX_MOVIES?: string;
     OPHIM_REFRESH_DELAY_MS?: string;
+    SEARCH_RATE_LIMITER?: {
+      limit(input: { key: string }): Promise<{ success: boolean }>;
+    };
     VSEMBED_EMBED_BASE_URL?: string;
     VSEMBED_MOBILE_EMBED_HOST?: string;
   };

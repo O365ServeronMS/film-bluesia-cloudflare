@@ -1,5 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
 import { env as cloudflareEnv } from "cloudflare:workers";
+import { applyHtmlCacheStorageHeaders, applyNoStoreHeaders, isMoviePlaybackVariantUrl, type HtmlCachePolicy } from "@/lib/html-cache-headers";
 import { isMobilePlaybackUserAgent } from "@/lib/playback";
 import { setCacheBypassRefresh, setRuntimeEnv } from "@/lib/runtime-env";
 
@@ -10,13 +11,6 @@ const MOVIE_LONG_HTML_TTL_SECONDS = 7776000;
 const MOVIE_SHORT_HTML_TTL_SECONDS = 86400;
 const STALE_WHILE_REVALIDATE_SECONDS = 1800;
 const DEFAULT_HTML_CACHE_VERSION = "2026-06-01-ophim-imdb-v5";
-const MOVIE_PLAYBACK_PARAMS = ["server", "ep", "player", "mirror", "play"] as const;
-
-type HtmlCachePolicy = {
-  browserMaxAge: number;
-  sharedMaxAge: number;
-  staleWhileRevalidate: number;
-};
 
 const PUBLIC_HTML_POLICIES = {
   home: { browserMaxAge: 0, sharedMaxAge: LIST_HTML_TTL_SECONDS, staleWhileRevalidate: STALE_WHILE_REVALIDATE_SECONDS },
@@ -34,15 +28,6 @@ function normalizedPath(pathname: string) {
 function isHtmlRequest(request: Request) {
   const accept = request.headers.get("accept") || "";
   return accept.includes("text/html") || accept.includes("*/*");
-}
-
-function cacheHeader(policy: HtmlCachePolicy) {
-  return [
-    "public",
-    `max-age=${policy.browserMaxAge}`,
-    `s-maxage=${policy.sharedMaxAge}`,
-    `stale-while-revalidate=${policy.staleWhileRevalidate}`
-  ].join(", ");
 }
 
 function publicHtmlPolicy(pathname: string): HtmlCachePolicy | null {
@@ -97,11 +82,6 @@ function canonicalHtmlSearch(url: URL) {
   return canonical;
 }
 
-function hasMoviePlaybackVariant(url: URL) {
-  const path = normalizedPath(url.pathname);
-  return /^\/movie\/[^/]+$/.test(path) && MOVIE_PLAYBACK_PARAMS.some((key) => url.searchParams.has(key));
-}
-
 function canonicalCacheRequest(url: URL, version: string, request: Request) {
   const cacheUrl = new URL(url.toString());
   cacheUrl.search = canonicalHtmlSearch(url).toString();
@@ -128,20 +108,6 @@ function isExplicitlyPrivateHtml(pathname: string) {
   return PRIVATE_HTML_PATHS.has(path) || path.startsWith("/watch/") || path === "/search";
 }
 
-function applyHtmlCacheHeaders(response: Response, policy: HtmlCachePolicy) {
-  const value = cacheHeader(policy);
-  response.headers.set("Cache-Control", value);
-  response.headers.set("CDN-Cache-Control", value);
-  response.headers.set("Cloudflare-CDN-Cache-Control", value);
-  response.headers.append("Vary", "Accept-Encoding");
-}
-
-function applyNoStoreHeaders(response: Response) {
-  response.headers.set("Cache-Control", "no-store");
-  response.headers.set("CDN-Cache-Control", "no-store");
-  response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
-}
-
 export const onRequest = defineMiddleware(async (context, next) => {
   const env = cloudflareEnv as unknown as Record<string, unknown>;
   setRuntimeEnv(env);
@@ -154,12 +120,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     isHtmlRequest(context.request) &&
     Boolean(initialPolicy) &&
     !bypassRefresh &&
+    !isMoviePlaybackVariantUrl(context.url) &&
     typeof caches !== "undefined";
 
   if (canUseHtmlCache) {
     const cached = await caches.default.match(cacheRequest);
     if (cached) {
       const hit = new Response(cached.body, cached);
+      applyNoStoreHeaders(hit);
       hit.headers.set("X-Film-Bluesia-Cache", "HTML_CACHE_HIT");
       hit.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
       cacheEvent("HTML_CACHE_HIT", { type: "html", url: cacheRequest.url });
@@ -194,7 +162,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const policy = publicHtmlPolicy(context.url.pathname);
   if (policy) {
-    if (hasMoviePlaybackVariant(context.url)) {
+    if (isMoviePlaybackVariantUrl(context.url)) {
       applyNoStoreHeaders(response);
       response.headers.set("X-Film-Bluesia-Cache", "HTML_CACHE_BYPASS_PLAYBACK_VARIANT");
       response.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
@@ -208,7 +176,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         ? PUBLIC_HTML_POLICIES.movieShort
         : policy;
     response.headers.delete("X-Film-Bluesia-Movie-Cache-Class");
-    applyHtmlCacheHeaders(response, finalPolicy);
+    applyHtmlCacheStorageHeaders(response, finalPolicy);
     response.headers.set("X-Film-Bluesia-Cache", bypassRefresh ? "HTML_CACHE_BYPASS_REFRESH" : "HTML_CACHE_MISS");
     response.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
 
@@ -216,6 +184,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       await caches.default.put(cacheRequest, response.clone());
       cacheEvent("HTML_CACHE_WRITE", { type: "html", url: cacheRequest.url, ttlSeconds: finalPolicy.sharedMaxAge });
     }
+    applyNoStoreHeaders(response);
   } else if (isExplicitlyPrivateHtml(context.url.pathname) || !context.url.pathname.startsWith("/api/")) {
     applyNoStoreHeaders(response);
   }
