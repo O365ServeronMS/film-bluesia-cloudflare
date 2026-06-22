@@ -168,39 +168,105 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   }
 
   return (
-    <section className="hero-cinematic relative h-[510px] overflow-hidden bg-obsidian outline-none sm:h-[450px]" tabIndex={0} onKeyDown={handleKeyDown} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} aria-roledescription="carousel" aria-label="Smart Spotlight">
-      <div key={active.slug} className="absolute inset-0 animate-[heroReveal_0.65s_ease-out]">
-        {activeImage ? (
-          <img src={imageSrc} srcSet={imageSrcSet} sizes="(min-width: 640px) 720px, 100vw" alt="" loading={visibleIndex === 0 ? "eager" : "lazy"} fetchPriority={visibleIndex === 0 ? "high" : "auto"} decoding="async" data-movie-poster data-fallback-src={activeSigned?.d} data-original-src={activeImage} data-placeholder-src="/image-placeholder.svg" className="h-full w-full object-cover object-center sm:object-[60%_center]" />
-        ) : null}
+    <section className="hero-cinematic relative h-[580px] overflow-hidden bg-obsidian outline-none sm:h-[600px]" tabIndex={0} onKeyDown={handleKeyDown} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} aria-roledescription="carousel" aria-label="Smart Spotlight">
+      
+      {/* Blurred background */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={imageSrc} 
+          srcSet={imageSrcSet} 
+          alt="" 
+          className="h-full w-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-obsidian via-obsidian/70 to-obsidian/40" />
       </div>
-      <div className="hero-cinematic-overlay absolute inset-0" aria-hidden="true" />
 
-      <div className="absolute inset-x-0 bottom-16 z-10 px-5 sm:bottom-14 sm:px-8">
-        <div className="max-w-[430px]">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-snow/80">
-            {active.year ? <span>{active.year}</span> : null}
-            {displayRating ? <span className="rounded-[4.5px] bg-snow px-1.5 py-0.5 font-black tracking-normal text-black">IMDb {displayRating.score.toFixed(1)}</span> : null}
-            <span>{heroFormat}</span>
-          </div>
-          <h1 className="mt-3 max-w-[390px] text-[36px] font-semibold leading-[0.98] tracking-[-0.035em] text-snow drop-shadow-lg sm:text-[48px]">{active.name}</h1>
-          {active.originName && active.originName !== active.name ? <p className="mt-3 line-clamp-1 text-[13px] font-medium text-snow/80 sm:text-sm">{active.originName}</p> : null}
-          <div className="mt-5 flex items-center gap-3">
-            <a href={detailHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-snow px-5 py-2.5 text-[13px] font-bold text-obsidian transition hover:bg-snow/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow"><Play className="h-4 w-4 fill-current" aria-hidden="true" />Xem phim</a>
-            <a href={detailHref} aria-label={`Xem chi tiết ${active.name}`} className="grid h-11 w-11 place-items-center rounded-full border border-snow/35 bg-obsidian/35 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow"><Info className="h-5 w-5" aria-hidden="true" /></a>
-          </div>
+      {/* Carousel Container */}
+      <div className="relative z-10 flex h-[62%] sm:h-[65%] w-full items-center justify-center mt-6">
+        {slides.map((movie, index) => {
+          let offset = index - visibleIndex;
+          const half = Math.floor(slides.length / 2);
+          if (offset > half) offset -= slides.length;
+          if (offset < -half) offset += slides.length;
+
+          if (Math.abs(offset) > 2) return null;
+
+          const isActive = offset === 0;
+          const isPrev = offset === -1;
+          const isNext = offset === 1;
+
+          let translateX = 0;
+          let scale = 0.67;
+          let opacity = 0;
+          let zIndex = 10 - Math.abs(offset);
+
+          if (isActive) {
+            translateX = 0;
+            scale = 1;
+            opacity = 1;
+          } else if (isPrev) {
+            translateX = -88;
+            opacity = 0.5;
+          } else if (isNext) {
+            translateX = 88;
+            opacity = 0.5;
+          } else {
+            translateX = offset < 0 ? -110 : 110;
+            opacity = 0;
+            scale = 0.5;
+          }
+
+          const movieImage = movie.thumb || movie.poster;
+          const movieSigned = movie.thumb ? movie.thumbSigned : movie.posterSigned;
+          const imgSrc = movieSigned?.d || movieImage;
+          const setSrc = movieSigned?.m && movieSigned?.d ? `${movieSigned.m} 480w, ${movieSigned.d} 960w` : undefined;
+
+          return (
+            <div
+              key={movie.slug}
+              onClick={() => { if (!isActive) chooseSlide(index); }}
+              className={`absolute h-full transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? "cursor-default" : "cursor-pointer"}`}
+              style={{
+                transform: `translateX(${translateX}%) scale(${scale})`,
+                opacity,
+                zIndex,
+                aspectRatio: '2/3',
+              }}
+            >
+              <img
+                src={imgSrc}
+                srcSet={setSrc}
+                sizes="(max-width: 767px) 300px, 400px"
+                alt={movie.name}
+                loading={isActive ? "eager" : "lazy"}
+                decoding="async"
+                className="h-full w-full rounded-2xl object-cover shadow-2xl ring-1 ring-white/10"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Content overlay */}
+      <div className="absolute inset-x-0 bottom-8 z-20 px-5 sm:bottom-12 sm:px-8 flex flex-col items-center text-center">
+        <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-snow/80">
+          {active.year ? <span>{active.year}</span> : null}
+          {displayRating ? <span className="rounded-[4.5px] bg-snow px-1.5 py-0.5 font-black tracking-normal text-black">IMDb {displayRating.score.toFixed(1)}</span> : null}
+          <span>{heroFormat}</span>
+        </div>
+        <h1 className="mt-2.5 max-w-[95%] sm:max-w-[80%] text-[28px] font-bold leading-tight tracking-tight text-snow drop-shadow-lg sm:text-[36px] line-clamp-1">{active.name}</h1>
+        {active.originName && active.originName !== active.name ? <p className="mt-1 line-clamp-1 text-[13px] font-medium text-snow/70 sm:text-sm max-w-[80%]">{active.originName}</p> : null}
+        
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <a href={detailHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-snow px-6 py-2.5 text-[14px] font-bold text-obsidian transition hover:bg-snow/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow"><Play className="h-4 w-4 fill-current" aria-hidden="true" />Xem phim</a>
+          <a href={detailHref} aria-label={`Xem chi tiết ${active.name}`} className="grid h-11 w-11 place-items-center rounded-full border border-snow/35 bg-obsidian/35 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow"><Info className="h-5 w-5" aria-hidden="true" /></a>
         </div>
       </div>
 
       {canNavigate ? (
         <>
-          <button type="button" aria-label="Spotlight trước" onClick={() => moveSlide(-1)} className="absolute left-3 top-[28%] z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-obsidian/45 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus:outline-none focus:ring-2 focus:ring-snow sm:grid"><ChevronLeft className="h-5 w-5" /></button>
-          <button type="button" aria-label="Spotlight tiếp theo" onClick={() => moveSlide(1)} className="absolute right-3 top-[28%] z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-obsidian/45 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus:outline-none focus:ring-2 focus:ring-snow sm:grid"><ChevronRight className="h-5 w-5" /></button>
-          <div className="absolute bottom-5 right-5 z-20 flex items-center gap-1.5 sm:right-8">
-            {slides.map((movie, index) => (
-              <button key={movie.slug} type="button" aria-label={`Chuyển tới ${movie.name}`} aria-current={index === visibleIndex ? "true" : undefined} onClick={() => chooseSlide(index)} className="grid h-6 min-w-4 place-items-center rounded-full"><span className={index === visibleIndex ? "h-1.5 w-6 rounded-full bg-snow transition-all" : "h-1.5 w-1.5 rounded-full bg-snow/40 transition-all hover:bg-snow"} /></button>
-            ))}
-          </div>
+          <button type="button" aria-label="Spotlight trước" onClick={() => moveSlide(-1)} className="absolute left-4 top-[35%] z-30 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-obsidian/45 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus:outline-none focus:ring-2 focus:ring-snow sm:grid"><ChevronLeft className="h-6 w-6" /></button>
+          <button type="button" aria-label="Spotlight tiếp theo" onClick={() => moveSlide(1)} className="absolute right-4 top-[35%] z-30 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-obsidian/45 text-snow backdrop-blur-sm transition hover:bg-snow hover:text-obsidian focus:outline-none focus:ring-2 focus:ring-snow sm:grid"><ChevronRight className="h-6 w-6" /></button>
         </>
       ) : null}
     </section>

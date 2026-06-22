@@ -40,30 +40,29 @@ export function MovieCard({
   navSourceKey?: string;
   returnTo?: string;
 }) {
-  const posterUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
-  const fallbackUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
+  const primaryUrl = validHttpImage(movie.thumb) || validHttpImage(movie.poster);
+  const fallbackUrl = validHttpImage(movie.poster) || validHttpImage(movie.thumb);
   
   let fallbackImage = "";
-  if (movie.thumbSigned?.d && movie.thumbSigned.d !== movie.posterSigned?.d) {
-    fallbackImage = movie.thumbSigned.d;
-  } else if (fallbackUrl && fallbackUrl !== posterUrl) {
+  if (movie.posterSigned?.d && movie.posterSigned.d !== movie.thumbSigned?.d) {
+    fallbackImage = movie.posterSigned.d;
+  } else if (fallbackUrl && fallbackUrl !== primaryUrl) {
     fallbackImage = fallbackUrl;
   }
 
   let imageSrc = LOCAL_IMAGE_PLACEHOLDER;
   let imageSrcSet: string | undefined = undefined;
 
-  if (movie.posterSigned?.m && movie.posterSigned?.d) {
-    imageSrc = movie.posterSigned.d;
-    imageSrcSet = `${movie.posterSigned.m} 480w, ${movie.posterSigned.d} 960w`;
-  } else if (posterUrl) {
-    imageSrc = posterUrl;
+  if (movie.thumbSigned?.m && movie.thumbSigned?.d) {
+    imageSrc = movie.thumbSigned.d;
+    imageSrcSet = `${movie.thumbSigned.m} 480w, ${movie.thumbSigned.d} 960w`;
+  } else if (primaryUrl) {
+    imageSrc = primaryUrl;
   }
   const imageClassName = "h-full w-full object-cover transition duration-500 group-hover:scale-105";
   const Title = headingLevel === 2 ? "h2" : "h3";
   const displayRating = getDisplayRating(movie);
   const status = movieStatus(movie);
-
   const detailHref = hrefWithReturnTo(`/movie/${movie.slug}`, returnTo, navSourceKey);
 
   return (
@@ -80,7 +79,7 @@ export function MovieCard({
             decoding="async"
             data-movie-poster
             data-fallback-src={fallbackImage || undefined}
-            data-original-src={posterUrl || undefined}
+            data-original-src={primaryUrl || undefined}
             data-placeholder-src={LOCAL_IMAGE_PLACEHOLDER}
             className={imageClassName}
           />
