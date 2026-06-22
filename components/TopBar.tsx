@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Heart, UserRound } from "lucide-react";
+import { Clock3, Heart, Search, UserRound } from "lucide-react";
 import { SearchSuggest } from "@/components/SearchSuggest";
 
 export function TopBar({ overlay = false }: { overlay?: boolean }) {
@@ -13,9 +13,15 @@ export function TopBar({ overlay = false }: { overlay?: boolean }) {
             <span className="hidden text-xs font-black uppercase tracking-[0.16em] sm:inline">Bluesia</span>
           </a>
         ) : null}
-        <div className={overlay ? "hidden w-[280px] min-w-0 sm:block" : "min-w-0 flex-1"}>
-          <SearchSuggest />
-        </div>
+        {overlay ? (
+          <a href="/search" aria-label="Tìm kiếm" className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-transparent text-ash-mist transition hover:bg-smoke hover:text-signal-blue">
+            <Search className="h-5 w-5 text-snow drop-shadow-md" />
+          </a>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <SearchSuggest />
+          </div>
+        )}
         <a href="/favorites" aria-label="Phim yêu thích" className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-transparent text-ash-mist transition hover:bg-smoke hover:text-signal-blue">
           <Heart className="h-5 w-5" />
         </a>
