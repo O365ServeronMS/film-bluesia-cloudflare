@@ -181,6 +181,7 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
           <img 
             src={imageSrc} 
             alt="" 
+            fetchPriority="high"
             className="h-full w-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700" 
           />
         </picture>
@@ -249,6 +250,7 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
                   src={imgSrc}
                   alt={movie.name}
                   loading={isActive ? "eager" : "lazy"}
+                  fetchPriority={isActive ? "high" : "auto"}
                   decoding="async"
                   className="h-full w-full rounded-2xl object-cover shadow-2xl ring-1 ring-white/10"
                 />

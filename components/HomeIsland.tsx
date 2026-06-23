@@ -4,13 +4,14 @@ import { SectionRow } from "./SectionRow";
 import { TopBar } from "./TopBar";
 import type { HomePayload } from "@/lib/types";
 
-export function HomeIsland({ returnTo }: { returnTo: string }) {
-  const [data, setData] = useState<HomePayload | null>(null);
+export function HomeIsland({ returnTo, initialData }: { returnTo: string; initialData?: HomePayload | null }) {
+  const [data, setData] = useState<HomePayload | null>(initialData || null);
   const [visibleSections, setVisibleSections] = useState<number>(2);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     async function loadData() {
+      if (initialData) return; // Skip fetch if SSR provided data
       try {
         const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
         if (!baseUrl) throw new Error("Snapshot Base URL not configured");
@@ -39,7 +40,7 @@ export function HomeIsland({ returnTo }: { returnTo: string }) {
     }
     
     loadData();
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     if (data && visibleSections <= data.sections.length) {
