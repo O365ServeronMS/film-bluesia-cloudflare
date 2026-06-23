@@ -7,7 +7,8 @@ export default defineConfig({
   site: "https://film.bluesia.net",
   integrations: [react()],
   adapter: cloudflare({
-    imageService: "passthrough"
+    imageService: "passthrough",
+    sessionKVBindingName: "KV"
   }),
   vite: {
     define: {
