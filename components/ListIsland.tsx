@@ -51,7 +51,7 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
   useEffect(() => {
     async function loadData() {
       try {
-        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL || "https://data.bluesia.net";
+        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
         let listData: MovieListPayload | null = null;
         let cData: SourceLabel[] = [];
         let catData: SourceLabel[] = [];
@@ -61,7 +61,7 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
         const snapshotKey = typeToSnapshotKey[type];
         
         let manifest: any = null;
-        if (canUseSnapshot || supportsCountryFilter || supportsCategoryFilter) {
+        if (baseUrl && (canUseSnapshot || supportsCountryFilter || supportsCategoryFilter)) {
           try {
             const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store" });
             if (manifestRes.ok) manifest = await manifestRes.json();

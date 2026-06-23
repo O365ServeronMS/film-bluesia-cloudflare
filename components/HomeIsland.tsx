@@ -11,7 +11,8 @@ export function HomeIsland({ returnTo }: { returnTo: string }) {
   useEffect(() => {
     async function loadData() {
       try {
-        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL || "https://data.bluesia.net";
+        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
+        if (!baseUrl) throw new Error("Snapshot Base URL not configured");
         const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store" });
         if (!manifestRes.ok) throw new Error("Manifest fetch failed");
         
