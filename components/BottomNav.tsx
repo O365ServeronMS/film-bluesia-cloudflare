@@ -149,7 +149,7 @@ export function BottomNav({
               }}
               className={cn(
                 "bottom-nav-item flex min-h-12 flex-col items-center justify-center rounded-lg px-1 py-1 text-caption font-semibold tracking-caption text-ash-mist transition-colors",
-                active && "text-signal-blue"
+                active && "text-glacier-beam"
               )}
             >
               <Icon className="bottom-nav-icon mb-0.5 h-5 w-5" strokeWidth={active ? 2.5 : 2} />
