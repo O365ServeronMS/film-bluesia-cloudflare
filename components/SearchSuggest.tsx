@@ -125,15 +125,21 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false, syncWithUr
                 >
                   <span className="h-16 w-11 shrink-0 overflow-hidden rounded-md bg-zinc-900">
                     {movie.poster || movie.thumb ? (
-                      <img
-                        src={movie.thumbSigned?.d || movie.posterSigned?.d || movie.poster || movie.thumb || ""}
-                        srcSet={(movie.thumbSigned?.m || movie.posterSigned?.m) && (movie.thumbSigned?.d || movie.posterSigned?.d) ? `${movie.thumbSigned?.m || movie.posterSigned?.m} 480w, ${movie.thumbSigned?.d || movie.posterSigned?.d} 960w` : undefined}
-                        sizes="(max-width: 767px) 480px, 960px"
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                      />
+                      <picture>
+                        {(movie.thumbSigned?.m || movie.posterSigned?.m) && (movie.thumbSigned?.d || movie.posterSigned?.d) ? (
+                          <>
+                            <source media="(max-width: 767px)" srcSet={movie.thumbSigned?.m || movie.posterSigned?.m} />
+                            <source media="(min-width: 768px)" srcSet={movie.thumbSigned?.d || movie.posterSigned?.d} />
+                          </>
+                        ) : null}
+                        <img
+                          src={movie.thumbSigned?.d || movie.posterSigned?.d || movie.poster || movie.thumb || ""}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </picture>
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">

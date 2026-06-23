@@ -51,11 +51,8 @@ export function MovieCard({
   }
 
   let imageSrc = LOCAL_IMAGE_PLACEHOLDER;
-  let imageSrcSet: string | undefined = undefined;
-
   if (movie.thumbSigned?.m && movie.thumbSigned?.d) {
     imageSrc = movie.thumbSigned.d;
-    imageSrcSet = `${movie.thumbSigned.m} 480w, ${movie.thumbSigned.d} 960w`;
   } else if (primaryUrl) {
     imageSrc = primaryUrl;
   }
@@ -69,20 +66,26 @@ export function MovieCard({
     <a href={detailHref} className="group block min-w-0">
       <article className="overflow-hidden rounded-lg bg-smoke transition duration-300">
         <div className="relative aspect-[2/3] overflow-hidden bg-obsidian">
-          <img
-            src={imageSrc}
-            srcSet={imageSrcSet}
-            sizes="(max-width: 767px) 480px, 960px"
-            alt={movie.name}
-            loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : undefined}
-            decoding="async"
-            data-movie-poster
-            data-fallback-src={fallbackImage || undefined}
-            data-original-src={primaryUrl || undefined}
-            data-placeholder-src={LOCAL_IMAGE_PLACEHOLDER}
-            className={imageClassName}
-          />
+          <picture>
+            {movie.thumbSigned?.m && movie.thumbSigned?.d ? (
+              <>
+                <source media="(max-width: 767px)" srcSet={movie.thumbSigned.m} />
+                <source media="(min-width: 768px)" srcSet={movie.thumbSigned.d} />
+              </>
+            ) : null}
+            <img
+              src={imageSrc}
+              alt={movie.name}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : undefined}
+              decoding="async"
+              data-movie-poster
+              data-fallback-src={fallbackImage || undefined}
+              data-original-src={primaryUrl || undefined}
+              data-placeholder-src={LOCAL_IMAGE_PLACEHOLDER}
+              className={imageClassName}
+            />
+          </picture>
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
             {displayRating ? (
               <span className="inline-flex min-h-5 items-center rounded-[4.5px] bg-[#f5c518] px-1.5 py-0.5 text-[9px] font-black uppercase leading-none tracking-[0.04em] text-black">

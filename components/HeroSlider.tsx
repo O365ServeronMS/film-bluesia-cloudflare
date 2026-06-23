@@ -129,7 +129,6 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
   const activeImage = active.thumb || active.poster;
   const activeSigned = active.thumb ? active.thumbSigned : active.posterSigned;
   const imageSrc = activeSigned?.d || activeImage;
-  const imageSrcSet = activeSigned?.m && activeSigned?.d ? `${activeSigned.m} 780w, ${activeSigned.d} 1280w` : undefined;
   const detailHref = hrefWithReturnTo(`/movie/${active.slug}`, "/", "home");
   const displayRating = getDisplayRating(active);
   const heroFormat = /trailer/i.test(active.episodeCurrent || "") ? "Trailer" : "HD";
@@ -172,12 +171,19 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
       
       {/* Blurred background */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src={imageSrc} 
-          srcSet={imageSrcSet} 
-          alt="" 
-          className="h-full w-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700" 
-        />
+        <picture>
+          {activeSigned?.m && activeSigned?.d ? (
+            <>
+              <source media="(max-width: 767px)" srcSet={activeSigned.m} />
+              <source media="(min-width: 768px)" srcSet={activeSigned.d} />
+            </>
+          ) : null}
+          <img 
+            src={imageSrc} 
+            alt="" 
+            className="h-full w-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700" 
+          />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-t from-obsidian via-obsidian/70 to-obsidian/40" />
       </div>
 
@@ -219,7 +225,6 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
           const movieImage = movie.thumb || movie.poster;
           const movieSigned = movie.thumb ? movie.thumbSigned : movie.posterSigned;
           const imgSrc = movieSigned?.d || movieImage;
-          const setSrc = movieSigned?.m && movieSigned?.d ? `${movieSigned.m} 480w, ${movieSigned.d} 960w` : undefined;
 
           return (
             <div
@@ -233,15 +238,21 @@ export function HeroSlider({ items }: { items: MovieCard[] }) {
                 aspectRatio: '2/3',
               }}
             >
-              <img
-                src={imgSrc}
-                srcSet={setSrc}
-                sizes="(max-width: 767px) 300px, 400px"
-                alt={movie.name}
-                loading={isActive ? "eager" : "lazy"}
-                decoding="async"
-                className="h-full w-full rounded-2xl object-cover shadow-2xl ring-1 ring-white/10"
-              />
+              <picture>
+                {movieSigned?.m && movieSigned?.d ? (
+                  <>
+                    <source media="(max-width: 767px)" srcSet={movieSigned.m} />
+                    <source media="(min-width: 768px)" srcSet={movieSigned.d} />
+                  </>
+                ) : null}
+                <img
+                  src={imgSrc}
+                  alt={movie.name}
+                  loading={isActive ? "eager" : "lazy"}
+                  decoding="async"
+                  className="h-full w-full rounded-2xl object-cover shadow-2xl ring-1 ring-white/10"
+                />
+              </picture>
             </div>
           );
         })}
