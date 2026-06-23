@@ -43,6 +43,7 @@
   ],
   "vars": {
     "IMAGE_CACHE_BASE_URL": "https://img.bluesia.net",
-    "SNAPSHOT_BASE_URL": "https://data.bluesia.net"
+    "SNAPSHOT_BASE_URL": "https://data.bluesia.net",
+    "PUBLIC_SNAPSHOT_BASE_URL": "https://data.bluesia.net"
   }
 }
