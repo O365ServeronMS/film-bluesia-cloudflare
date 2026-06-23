@@ -37,6 +37,7 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
   const [data, setData] = useState<MovieListPayload | null>(null);
   const [countries, setCountries] = useState<SourceLabel[]>([]);
   const [categories, setCategories] = useState<SourceLabel[]>([]);
+  const [visibleItems, setVisibleItems] = useState<number>(12);
   const [error, setError] = useState(false);
   
   // URL state
@@ -145,6 +146,15 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
     loadData();
   }, [type, page, requestedCountry, requestedCategory, supportsCategoryFilter, supportsCountryFilter]);
 
+  useEffect(() => {
+    if (data && visibleItems < data.items.length) {
+      const timer = window.setTimeout(() => {
+        setVisibleItems((prev) => prev + 12);
+      }, 100);
+      return () => window.clearTimeout(timer);
+    }
+  }, [data, visibleItems]);
+
   if (error) {
     return (
       <>
@@ -220,19 +230,21 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
       )}
 
       <section className="grid grid-cols-3 gap-3 px-4 pt-5 sm:grid-cols-4">
-        {data.items.map((movie) => (
+        {data.items.slice(0, visibleItems || 12).map((movie) => (
           <MovieCard key={movie.slug} movie={movie} compact headingLevel={2} navSourceKey={type} returnTo={returnTo} />
         ))}
       </section>
 
-      <Pagination 
-        className="px-4" 
-        currentPage={currentPage} 
-        totalPages={totalPages} 
-        buildUrl={(p) => listHref(p)} 
-      />
+      {visibleItems >= data.items.length && (
+        <Pagination 
+          className="px-4" 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          buildUrl={(p) => listHref(p)} 
+        />
+      )}
 
-      {(countries.length > 0 || categories.length > 0) ? (
+      {visibleItems >= data.items.length && (countries.length > 0 || categories.length > 0) ? (
         <section className="mx-4 mt-8 border-t border-white/10 pb-8 pt-6" aria-labelledby="all-filter-tags">
           <div className="flex items-center justify-between gap-3">
             <h2 id="all-filter-tags" className="text-caption font-bold uppercase tracking-caption text-iron-veil">Khám phá theo thẻ</h2>

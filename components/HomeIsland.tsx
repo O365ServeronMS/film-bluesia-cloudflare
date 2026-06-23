@@ -6,6 +6,7 @@ import type { HomePayload } from "@/lib/types";
 
 export function HomeIsland({ returnTo }: { returnTo: string }) {
   const [data, setData] = useState<HomePayload | null>(null);
+  const [visibleSections, setVisibleSections] = useState<number>(2);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,15 @@ export function HomeIsland({ returnTo }: { returnTo: string }) {
     
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (data && visibleSections <= data.sections.length) {
+      const timer = window.setTimeout(() => {
+        setVisibleSections((prev) => prev + 1);
+      }, 100);
+      return () => window.clearTimeout(timer);
+    }
+  }, [data, visibleSections]);
 
   if (error) {
     return (
@@ -79,7 +89,7 @@ export function HomeIsland({ returnTo }: { returnTo: string }) {
         <TopBar overlay />
         <HeroSlider items={data.hero} />
       </div>
-      {data.sections.map((section, index) => (
+      {data.sections.slice(0, visibleSections).map((section, index) => (
         <SectionRow
           key={section.href || index}
           title={section.title}
@@ -93,3 +103,4 @@ export function HomeIsland({ returnTo }: { returnTo: string }) {
     </>
   );
 }
+
