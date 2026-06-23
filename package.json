@@ -37,6 +37,7 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "sharp": "^0.35.2",
     "wrangler": "latest"
   },
   "browserslist": [

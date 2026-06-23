@@ -8,9 +8,8 @@ export function TopBar({ overlay = false }: { overlay?: boolean }) {
     <header className={overlay ? "absolute inset-x-0 top-0 z-40 px-4 py-3" : "sticky top-0 z-40 bg-obsidian/90 px-4 py-4 backdrop-blur-md"}>
       <div className="flex items-center gap-2 sm:gap-3">
         {overlay ? (
-          <a href="/" aria-label="Bluesia Cinema" className="mr-auto inline-flex items-center gap-2 text-snow drop-shadow-md">
-            <img src="/icon.svg" alt="" className="h-7 w-7 rounded-md" />
-            <span className="hidden text-xs font-black uppercase tracking-[0.16em] sm:inline">Bluesia</span>
+          <a href="/" aria-label="BLUE cine" className="mr-auto inline-flex items-center text-snow drop-shadow-md">
+            <img src="/logo.svg" alt="BLUE cine" className="h-6 w-auto" />
           </a>
         ) : null}
         {overlay ? (
