@@ -7,6 +7,7 @@ import type { MovieCard } from "@/lib/types";
 type SearchSuggestProps = {
   initialQuery?: string;
   autoFocus?: boolean;
+  syncWithUrl?: boolean;
 };
 
 type SearchState = "idle" | "loading" | "ready" | "empty" | "error";
@@ -14,12 +15,30 @@ type SearchState = "idle" | "loading" | "ready" | "empty" | "error";
 const MIN_QUERY_LENGTH = 2;
 const SUGGESTION_LIMIT = 6;
 
-export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSuggestProps) {
+export function SearchSuggest({ initialQuery = "", autoFocus = false, syncWithUrl = false }: SearchSuggestProps) {
   const [query, setQuery] = useState(initialQuery);
   const [items, setItems] = useState<MovieCard[]>([]);
   const [state, setState] = useState<SearchState>("idle");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!syncWithUrl) return;
+
+    function syncQuery() {
+      const nextQuery = new URLSearchParams(window.location.search).get("q") || "";
+      setQuery(nextQuery);
+      setOpen(false);
+      setItems([]);
+      setState("idle");
+      if (autoFocus && !nextQuery) inputRef.current?.focus();
+    }
+
+    syncQuery();
+    window.addEventListener("popstate", syncQuery);
+    return () => window.removeEventListener("popstate", syncQuery);
+  }, [autoFocus, syncWithUrl]);
 
   useEffect(() => {
     const q = query.trim();
@@ -79,13 +98,14 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false }: SearchSu
       <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-zinc-300 shadow-sm">
         <Search className="h-5 w-5 shrink-0" />
         <input
+          ref={inputRef}
           name="q"
           value={query}
           onChange={(event) => changeQuery(event.target.value)}
           onFocus={() => setOpen(true)}
           placeholder="Tìm kiếm phim, diễn viên..."
           className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-          autoFocus={autoFocus}
+          autoFocus={autoFocus && !syncWithUrl}
           autoComplete="off"
         />
       </label>

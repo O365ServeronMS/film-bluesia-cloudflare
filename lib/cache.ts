@@ -264,7 +264,9 @@ export async function readJsonCacheEntry<T>(namespace: string, key: string, ttlS
       return null;
     }
 
-    cacheLog("KV_METADATA_HIT", { namespace, key: objectKey, allowExpired });
+    if (import.meta.env.DEV) {
+      cacheLog("KV_METADATA_HIT", { namespace, key: objectKey, allowExpired });
+    }
     return { value: envelope.value, cachedAt: envelope.cachedAt, hash: envelope.hash };
   } catch (error) {
     cacheLog("KV_METADATA_MISS", { namespace, key: objectKey, error: error instanceof Error ? error.message : String(error) });

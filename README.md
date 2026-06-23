@@ -2,13 +2,40 @@
 
 A minimal, high-performance movie catalog and streaming application built with Astro and React. Deployed on Cloudflare Workers/Pages.
 
-## Features
+## Project Structure
 
-- **Astro + React**: Blazing fast server-side and client-side rendering.
-- **Upstream Integration**: Fetches metadata and streams from OPhim.
-- **Image Delivery**: Uses a shared external image cache (`img.bluesia.net`) with HMAC-signed URLs for poster/backdrop images. Requires `PUBLIC_IMAGE_CACHE_URL` and `IMAGE_CACHE_SIGNING_SECRET` environment variables. See [Architectural Decisions](docs/DECISIONS.md) for details.
-- **Responsive Images**: Uses native HTML `srcset` and `<picture>` tags to deliver optimal mobile (`m`) and desktop (`d`) signed image variants without user-agent detection.
-- **Cloudflare Native**: Designed to run efficiently on Cloudflare Pages/Workers using KV, R2, and Cache API.
+This project follows a component-driven architecture using Astro for server-side rendering and routing, and React for interactive client-side islands. 
+
+Below is the basic structure of the project:
+
+- **`src/`**: Contains the core Astro application.
+  - **`pages/`**: File-based routing. Each `.astro` file here corresponds to a route (e.g., `/`, `/movie/[slug]`). API routes are located in `src/pages/api/`.
+  - **`layouts/`**: Astro layout components (e.g., `BaseLayout.astro`) that wrap page content with common HTML scaffolding and metadata.
+  - **`styles/`**: Global CSS files (e.g., `globals.css`) utilizing Tailwind CSS for styling and custom CSS variables.
+  - **`middleware.ts`**: Cloudflare Pages middleware for caching strategies, handling edge headers, and intercepting requests.
+  
+- **`components/`**: Reusable UI components.
+  - Built primarily with React (`.tsx`) for interactive elements (e.g., `BottomNav`, `MoviePlayer`, `SectionRow`).
+  - Used within Astro pages as islands where interactivity is needed (`client:load`, `client:visible`, etc.).
+
+- **`lib/`**: Core logic, utilities, and integrations.
+  - API clients and data fetching layers (e.g., `ophim.ts`).
+  - Edge caching and routing utilities (`cache.ts`, `html-cache-headers.ts`, `navigation.ts`).
+  - Image handling and normalization logic (`image-cache.ts`).
+  - Shared TypeScript interfaces and types (`types.ts`).
+
+- **`public/`**: Static assets that are served directly at the root path without processing (e.g., `favicon.ico`, `manifest.webmanifest`, PWA icons).
+
+- **`docs/`**: Internal documentation files covering design guidelines (`DESIGN.md`), architecture decisions (`DECISIONS.md`), edge caching rules (`CLOUDFLARE_CACHE.md`), and other project references.
+
+- **`scripts/`**: Utility scripts for testing, verification, and maintenance tasks (e.g., testing image normalization, KV write resilience).
+
+## Core Technologies
+
+- **Framework**: [Astro](https://astro.build/) for static and server-generated content.
+- **UI Library**: [React](https://react.dev/) for interactive components.
+- **Styling**: Tailwind CSS with a custom design token system.
+- **Deployment**: Cloudflare Pages & Workers (utilizing Cache API and KV).
 
 ## Getting Started
 
@@ -49,18 +76,9 @@ Preview the Cloudflare Pages worker environment locally using Wrangler:
 npm run preview
 ```
 
-### Deployment
+## Documentation Reference
 
-Deploy to Cloudflare:
-
-```bash
-npm run deploy
-```
-
-## Troubleshooting & Docs
-
-For advanced caching architecture, image proxy details, and configuration:
-- [Cloudflare Caching Configuration](docs/CLOUDFLARE_CACHE.md)
-- [Image Proxy Troubleshooting](docs/IMAGE_TROUBLESHOOTING.md)
-- [Architectural Decisions](docs/DECISIONS.md)
-- [Project File Map](docs/FILE_MAP.md)
+For advanced configuration and architecture details, refer to the `docs/` folder:
+- `CLOUDFLARE_CACHE.md`: Cloudflare Caching Configuration
+- `DECISIONS.md`: Architectural Decisions
+- `FILE_MAP.md`: Project File Map

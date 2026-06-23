@@ -216,12 +216,14 @@ async function fetchMoviePayloadWithInfo(slug: string): Promise<MoviePayloadFetc
   const cachedInfo = moviePayloadCacheInfo(cached);
 
   if (cached && cachedEntry && isCacheEntryFresh(cachedEntry.cachedAt, cachedInfo.ttlSeconds)) {
-    logCacheEvent(cachedInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
-      namespace: policy.namespace,
-      key: url,
-      slug: safeSlug,
-      ttlSeconds: cachedInfo.ttlSeconds
-    });
+    if (import.meta.env.DEV) {
+      logCacheEvent(cachedInfo.cacheClass === "full" ? "KV_METADATA_LONG_TTL_FULL" : "KV_METADATA_SHORT_TTL_TRAILER", {
+        namespace: policy.namespace,
+        key: url,
+        slug: safeSlug,
+        ttlSeconds: cachedInfo.ttlSeconds
+      });
+    }
     return { payload: cached, refreshed: false, ...cachedInfo };
   }
 

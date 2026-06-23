@@ -23,7 +23,8 @@ Old versioned Cache API entries are left to expire under their existing TTLs; th
 
 ## TTL policy
 
-- Home, list HTML, API responses, and list/taxonomy metadata: `1800` seconds.
+- Home, list HTML: Pre-rendered as static assets. Client islands fetch immutable R2 snapshots (e.g. `https://data.bluesia.net/manifest/latest.json`) with a dynamic fallback to the Worker API (`1800` seconds TTL).
+- API responses and taxonomy metadata: `1800` seconds.
 - Movie metadata: `7776000` seconds.
 - Movie HTML: `7776000` seconds for completed/full titles with playable links; `86400` seconds otherwise.
 - Search: no-store.
@@ -43,6 +44,12 @@ Favorites, watch history, and settings remain browser-local and are excluded fro
 
 The Worker defaults to 24 movies per run and a 1500 ms delay. These defaults live in code, so duplicate production variables are unnecessary. Refresh writes use stable-hash deduplication and daily KV write budgets.
 
+## Production Workers Logs
+
+Persisted production Workers Logs use 1% head sampling (`observability.logs.head_sampling_rate: 0.01`). Successful HTML and KV cache-hit messages are development-only; production still emits cache misses/writes/bypasses, uncaught errors, rate-limit events, deployment-version diagnostics, and scheduled refresh summaries when their invocation is sampled.
+
+For an incident, temporarily raise `observability.logs.head_sampling_rate` in `wrangler.jsonc` (up to `1` for 100%), validate with `npx.cmd wrangler deploy --dry-run`, and deploy through the normal release process. Restore `0.01` after the investigation to avoid sustained log volume. Local development keeps successful cache-hit diagnostics regardless of the production sampling setting.
+
 ## Manual OPhim refresh
 
 `POST /api/admin/refresh` requires `x-refresh-token: <ADMIN_REFRESH_TOKEN>`, returns `401` without a valid token, and is rate-limited through KV.
@@ -59,7 +66,7 @@ curl -X POST https://film.bluesia.net/api/admin/refresh `
 After deployment, the intended runtime inventory is:
 
 - bindings: `ASSETS`, `KV`, `WORKER_VERSION`
-- plain-text variable: `IMAGE_CACHE_BASE_URL`
+- plain-text variable: `IMAGE_CACHE_BASE_URL`, `SNAPSHOT_BASE_URL`
 - secrets: `IMAGE_CACHE_SIGNING_SECRET`, `ADMIN_REFRESH_TOKEN`
 
 Do not add site-local image proxy/R2 variables back unless the architecture explicitly moves image delivery away from the shared cache.

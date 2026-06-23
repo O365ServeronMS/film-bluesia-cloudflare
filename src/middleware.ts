@@ -130,7 +130,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applyNoStoreHeaders(hit);
       hit.headers.set("X-Film-Bluesia-Cache", "HTML_CACHE_HIT");
       hit.headers.set("X-Film-Bluesia-HTML-Cache-Version", cacheVersion);
-      cacheEvent("HTML_CACHE_HIT", { type: "html", url: cacheRequest.url });
+      if (import.meta.env.DEV) {
+        cacheEvent("HTML_CACHE_HIT", { type: "html", url: cacheRequest.url });
+      }
       setCacheBypassRefresh(false);
       return hit;
     }

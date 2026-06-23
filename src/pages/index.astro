@@ -1,37 +1,12 @@
 ---
+export const prerender = true;
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
-import { HeroSlider } from "@/components/HeroSlider";
-import { SectionRow } from "@/components/SectionRow";
-import { TopBar } from "@/components/TopBar";
+import { HomeIsland } from "@/components/HomeIsland";
 import { createReturnToPath } from "@/lib/navigation";
-import { getHome } from "@/lib/ophim";
 
-const home = await getHome();
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
-const firstHeroSigned = home.hero[0]?.thumbSigned || home.hero[0]?.posterSigned;
-const heroPreloadSrcSet = firstHeroSigned
-  ? `${firstHeroSigned.m} 780w, ${firstHeroSigned.d} 1280w`
-  : undefined;
 ---
 
 <BaseLayout>
-  {heroPreloadSrcSet && (
-    <Fragment slot="head">
-      <link rel="preload" as="image" imagesrcset={heroPreloadSrcSet} imagesizes="(min-width: 640px) 720px, 100vw" />
-    </Fragment>
-  )}
-  <div class="relative">
-    <TopBar client:load overlay />
-    <HeroSlider client:load items={home.hero} />
-  </div>
-  {home.sections.map((section, index) => (
-    <SectionRow
-      title={section.title}
-      href={section.href}
-      items={section.items}
-      returnTo={returnTo}
-      spotlight={index === 0}
-      itemLimit={section.href === "/list/phim-moi-cap-nhat" ? 24 : 8}
-    />
-  ))}
+  <HomeIsland client:load returnTo={returnTo} />
 </BaseLayout>

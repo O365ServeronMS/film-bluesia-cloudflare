@@ -10,6 +10,9 @@ export default defineConfig({
     imageService: "passthrough"
   }),
   vite: {
+    define: {
+      "import.meta.env.PUBLIC_SNAPSHOT_BASE_URL": JSON.stringify(process.env.PUBLIC_SNAPSHOT_BASE_URL || "https://data.bluesia.net")
+    },
     cacheDir: process.env.VITE_CACHE_DIR || ".vite-cache-build",
     resolve: {
       alias: {

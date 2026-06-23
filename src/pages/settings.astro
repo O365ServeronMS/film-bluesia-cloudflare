@@ -2,6 +2,8 @@
 import { ArrowLeft, Database, Globe2, ShieldCheck } from "lucide-react";
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 
+export const prerender = true;
+
 const apiBase = process.env.OPHIM_BASE_URL || "https://ophim1.com";
 ---
 
