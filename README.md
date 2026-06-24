@@ -1,84 +1,66 @@
 # FilmBluesia
 
-A minimal, high-performance movie catalog and streaming application built with Astro and React. Deployed on Cloudflare Workers/Pages.
+A Vietnamese movie streaming catalog at **[film.bluesia.net](https://film.bluesia.net)** — browse, search, and watch movies with a fast, mobile-first interface.
 
-## Project Structure
+---
 
-This project follows a component-driven architecture using Astro for server-side rendering and routing, and React for interactive client-side islands. 
+## What it does
 
-Below is the basic structure of the project:
+- **Browse & search** Vietnamese movie metadata sourced from the OPhim API
+- **Stream** via embedded players or direct HLS playback, device-aware (iOS vs Android/Desktop)
+- **Remember** your favorites and watch history, stored locally in your browser
+- **Load fast** — pages are edge-cached on Cloudflare, posters served from a shared image CDN
 
-- **`src/`**: Contains the core Astro application.
-  - **`pages/`**: File-based routing. Each `.astro` file here corresponds to a route (e.g., `/`, `/movie/[slug]`). API routes are located in `src/pages/api/`.
-  - **`layouts/`**: Astro layout components (e.g., `BaseLayout.astro`) that wrap page content with common HTML scaffolding and metadata.
-  - **`styles/`**: Global CSS files (e.g., `globals.css`) utilizing Tailwind CSS for styling and custom CSS variables.
-  - **`middleware.ts`**: Cloudflare Pages middleware for caching strategies, handling edge headers, and intercepting requests.
-  
-- **`components/`**: Reusable UI components.
-  - Built primarily with React (`.tsx`) for interactive elements (e.g., `BottomNav`, `MoviePlayer`, `SectionRow`).
-  - Used within Astro pages as islands where interactivity is needed (`client:load`, `client:visible`, etc.).
+---
 
-- **`lib/`**: Core logic, utilities, and integrations.
-  - API clients and data fetching layers (e.g., `ophim.ts`).
-  - Edge caching and routing utilities (`cache.ts`, `html-cache-headers.ts`, `navigation.ts`).
-  - Image handling and normalization logic (`image-cache.ts`).
-  - Shared TypeScript interfaces and types (`types.ts`).
+## Stack (for the curious)
 
-- **`public/`**: Static assets that are served directly at the root path without processing (e.g., `favicon.ico`, `manifest.webmanifest`, PWA icons).
+| What | How |
+|---|---|
+| Pages & routing | [Astro 7](https://astro.build) (server-rendered) |
+| Interactive bits | React 19 (islands only) |
+| Styling | Tailwind CSS 4 |
+| Hosting | Cloudflare Workers |
+| Metadata cache | Cloudflare KV |
+| Images | `img.bluesia.net` (HMAC-signed CDN) |
+| Video | hls.js (direct) + Vidsrc embed |
 
-- **`docs/`**: Internal documentation files covering design guidelines (`DESIGN.md`), architecture decisions (`DECISIONS.md`), edge caching rules (`CLOUDFLARE_CACHE.md`), and other project references.
+---
 
-- **`scripts/`**: Utility scripts for testing, verification, and maintenance tasks (e.g., testing image normalization, KV write resilience).
-
-## Core Technologies
-
-- **Framework**: [Astro](https://astro.build/) for static and server-generated content.
-- **UI Library**: [React](https://react.dev/) for interactive components.
-- **Styling**: Tailwind CSS with a custom design token system.
-- **Deployment**: Cloudflare Pages & Workers (utilizing Cache API and KV).
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm
-
-### Installation
-
-Install the project dependencies:
+## Run it locally
 
 ```bash
 npm install
+npm run dev        # → http://localhost:4321
 ```
-
-### Development
-
-Run the development server locally:
 
 ```bash
-npm run dev
+npm run build      # production build
+npm run preview    # build + serve via Wrangler (mirrors Cloudflare env)
 ```
 
-The application will be accessible at `http://localhost:4321`.
+> **Deploy** is intentionally manual: `npm run deploy` — only run this when you mean it.
 
-### Build & Preview
+---
 
-Build the production site:
+## Project layout
+
+```
+src/pages/       # Routes: /, /movie/[slug], /list/[type], /search, …
+components/      # UI: MovieCard, HeroSlider, MoviePlayer, BottomNav, …
+lib/             # Logic: API client, caching, image URLs, types
+docs/            # Architecture notes (start with DECISIONS.md)
+scripts/         # Diagnostic & test scripts
+```
+
+---
+
+## For developers
+
+Full architectural decisions, cache rules, and anti-regression guidelines live in [`docs/DECISIONS.md`](docs/DECISIONS.md). Read it before touching cache behavior, image URLs, navigation, or playback.
+
+The only automated check is the build:
 
 ```bash
-npm run build
+npm run build    # must pass after every change
 ```
-
-Preview the Cloudflare Pages worker environment locally using Wrangler:
-
-```bash
-npm run preview
-```
-
-## Documentation Reference
-
-For advanced configuration and architecture details, refer to the `docs/` folder:
-- `CLOUDFLARE_CACHE.md`: Cloudflare Caching Configuration
-- `DECISIONS.md`: Architectural Decisions
-- `FILE_MAP.md`: Project File Map
