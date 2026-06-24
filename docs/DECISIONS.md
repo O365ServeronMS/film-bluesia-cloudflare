@@ -1,5 +1,13 @@
 # Decisions And Anti-Regression Rules
 
+## 2026-06-24 Movie Detail Hero LCP Preload (reverses 2026-06-13 backdrop deprioritization)
+
+- **Decision**: The `/movie/[slug]` hero backdrop image uses `fetchpriority="high"` + `loading="eager"` and is preloaded via `<link rel="preload" as="image">` (mobile `m` / desktop `d` variants). This reverses the 2026-06-13 `Jun26-v3-img-perf` rule below that set the backdrop to low/lazy and removed its preload.
+- **Reason**: Since the 2026-06-16 external signed image cache decision, all active backdrop rendering routes through `img.bluesia.net`, which serves size-optimized `webp` `m`/`d` variants. The original "multi-megabyte raw OPhim backdrop" concern that motivated low/lazy no longer applies to the signed path. The backdrop is the LCP element on the movie detail page; deprioritizing it delayed LCP by ~1–2s on mobile.
+- **Scope**: Applies to the signed `img.bluesia.net` path. The raw-upstream fallback (`heroImage`) is preloaded only when signing env vars are absent (non-production); do not preload raw OPhim backdrops in production.
+- **Cache invalidation**: No `HTML_CACHE_VERSION` bump needed. Per the 2026-06-18 decision, HTML cache keys are scoped to `WORKER_VERSION.id`, so the next deployment regenerates movie HTML with the new preload automatically.
+- **Anti-regression**: Keep the home hero preload (`src/pages/index.astro`) and the movie detail hero preload consistent. Only `m`/`d` variants; no width/quality/DPR params (shared image cache invariant).
+
 ## 2026-06-18 Deployment-Scoped HTML Cache And Binding Cleanup
 
 - **Decision**: HTML Cache API keys use the Cloudflare `WORKER_VERSION.id` binding. Every deployment gets a new cache namespace automatically, so old HTML cannot reference a new deployment's replaced Astro assets.
