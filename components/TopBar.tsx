@@ -9,7 +9,7 @@ export function TopBar({ overlay = false }: { overlay?: boolean }) {
       <div className="flex items-center gap-2 sm:gap-3">
         {overlay ? (
           <a href="/" aria-label="BLUE cine" className="mr-auto inline-flex items-center text-snow drop-shadow-md">
-            <img src="/logo.svg" alt="BLUE cine" className="h-6 w-auto" />
+            <img src="/logo.webp" alt="BLUE cine" className="h-6 w-auto rounded-md" />
           </a>
         ) : null}
         {overlay ? (

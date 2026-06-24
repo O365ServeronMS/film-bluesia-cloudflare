@@ -2,61 +2,51 @@ import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 
-const svgString = `
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Background is transparent -->
-  <g transform="translate(256, 260)">
-    <text y="-30" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="160" fill="#FFFFFF" text-anchor="middle" letter-spacing="-6">BLUE</text>
-    <text y="90" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="120" fill="#FFFFFF" text-anchor="middle" letter-spacing="-4">cine</text>
-  </g>
-</svg>
-`;
-
-const svgStringWithBg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="100%" height="100%" fill="#07090f" rx="100" />
-  <g transform="translate(256, 260)">
-    <text y="-30" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="160" fill="#FFFFFF" text-anchor="middle" letter-spacing="-6">BLUE</text>
-    <text y="90" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="120" fill="#FFFFFF" text-anchor="middle" letter-spacing="-4">cine</text>
-  </g>
-</svg>
-`;
-
 async function main() {
-  console.log("Generating icons...");
+  console.log("Generating icons from public/logo-source.png...");
   
-  const baseBuffer = Buffer.from(svgString);
-  const baseBufferBg = Buffer.from(svgStringWithBg);
-
-  // Logo webp (we crop the SVG bounds approx) - MUST be transparent
-  await sharp(baseBuffer)
-    .extract({ left: 30, top: 70, width: 452, height: 260 })
+  const sourcePath = path.join(process.cwd(), 'public', 'logo-source.png');
+  
+  // Read the source PNG image
+  const sourceImage = sharp(sourcePath);
+  
+  // Generate logo.webp
+  await sourceImage.clone()
+    .resize(512, 512, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
     .webp({ quality: 100 })
     .toFile(path.join(process.cwd(), 'public', 'logo.webp'));
 
-  // 512x512 png with background
-  await sharp(baseBufferBg)
+  // 512x512 png with background (already has white background)
+  await sourceImage.clone()
+    .resize(512, 512, { fit: 'contain' })
     .png()
     .toFile(path.join(process.cwd(), 'public', 'icon-512.png'));
 
-  // apple-touch-icon.png (180x180, often with solid background)
-  await sharp(baseBufferBg)
-    .resize(180, 180)
+  // apple-touch-icon.png (180x180)
+  await sourceImage.clone()
+    .resize(180, 180, { fit: 'contain' })
     .png()
     .toFile(path.join(process.cwd(), 'public', 'apple-touch-icon.png'));
 
   // Other sizes with background so they are visible on light browser tabs
   const sizes = [192, 64, 32];
   for (const size of sizes) {
-    await sharp(baseBufferBg)
-      .resize(size, size)
+    await sourceImage.clone()
+      .resize(size, size, { fit: 'contain' })
       .png()
       .toFile(path.join(process.cwd(), 'public', `icon-${size}.png`));
   }
 
-  // Also write the SVG file (favicon.svg gets the background so it's visible in light tabs)
-  await fs.writeFile(path.join(process.cwd(), 'public', 'icon.svg'), svgStringWithBg);
-  await fs.writeFile(path.join(process.cwd(), 'public', 'favicon.svg'), svgStringWithBg);
+  // Remove the old SVGs as we no longer have an SVG source
+  try {
+    await fs.unlink(path.join(process.cwd(), 'public', 'icon.svg'));
+  } catch(e) {}
+  try {
+    await fs.unlink(path.join(process.cwd(), 'public', 'favicon.svg'));
+  } catch(e) {}
+  try {
+    await fs.unlink(path.join(process.cwd(), 'public', 'logo.svg'));
+  } catch(e) {}
 
   console.log("Done generating icons.");
 }
