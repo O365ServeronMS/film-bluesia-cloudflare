@@ -8,12 +8,7 @@ export function TopBar({ overlay = false }: { overlay?: boolean }) {
     <header className={overlay ? "absolute inset-x-0 top-0 z-40 px-4 py-3" : "sticky top-0 z-40 bg-obsidian/90 px-4 py-4 backdrop-blur-md"}>
       <div className="flex items-center gap-2 sm:gap-3">
         {overlay ? (
-          <a href="/" aria-label="BLUE cine" className="mr-auto inline-flex items-center text-snow drop-shadow-md">
-            <img src="/logo.webp" alt="BLUE cine" className="h-6 w-auto rounded-md" />
-          </a>
-        ) : null}
-        {overlay ? (
-          <a href="/search" aria-label="Tìm kiếm" className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-transparent text-ash-mist transition hover:bg-smoke hover:text-signal-blue">
+          <a href="/search" aria-label="Tìm kiếm" className="ml-auto grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-transparent text-ash-mist transition hover:bg-smoke hover:text-signal-blue">
             <Search className="h-5 w-5 text-snow drop-shadow-md" />
           </a>
         ) : (
