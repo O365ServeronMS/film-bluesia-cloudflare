@@ -10,6 +10,25 @@ Full architectural decisions and anti-regression rules live in `docs/DECISIONS.m
 
 ---
 
+## Working philosophy
+
+Four principles that override speed when in conflict:
+
+**1. Think before coding** — State assumptions explicitly. If the request has multiple interpretations, name them; don't pick silently. If something is unclear, stop and ask. Push back when a simpler approach exists.
+
+**2. Simplicity first** — Write the minimum code that solves the problem. No features beyond what was asked. No single-use abstractions. If the result is 200 lines and it could be 50, rewrite it. Test: *Would a senior engineer say this is overcomplicated?*
+
+**3. Surgical changes** — Touch only what the task requires. Don't improve adjacent code, comments, or formatting. Match existing style. When your changes create orphaned imports or variables, remove them. Don't touch pre-existing dead code unless asked.
+
+**4. Goal-driven execution** — Transform tasks into verifiable goals. For multi-step work, state a brief plan first:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+```
+Strong success criteria let you loop independently without constant clarification.
+
+---
+
 ## Tech stack
 
 | Layer | Choice |
