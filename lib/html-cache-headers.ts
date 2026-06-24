@@ -29,7 +29,7 @@ export function applyHtmlCacheStorageHeaders(response: Response, policy: HtmlCac
   response.headers.set("Cache-Control", storageCacheHeader(policy));
   response.headers.delete("CDN-Cache-Control");
   response.headers.delete("Cloudflare-CDN-Cache-Control");
-  response.headers.append("Vary", "Accept-Encoding");
+  response.headers.set("Vary", "Accept-Encoding");
 }
 
 export function applyNoStoreHeaders(response: Response) {

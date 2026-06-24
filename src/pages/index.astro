@@ -12,12 +12,12 @@ let preloadImages: { m?: string; d?: string; raw?: string } | null = null;
 try {
   const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
   if (baseUrl) {
-    const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store" });
+    const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store", signal: AbortSignal.timeout(2000) });
     if (manifestRes.ok) {
       const manifest = await manifestRes.json();
       const hash = manifest.snapshots?.home?.hash;
       if (hash) {
-        const snapshotRes = await fetch(`${baseUrl}/home/${hash}.json`, { cache: "force-cache" });
+        const snapshotRes = await fetch(`${baseUrl}/home/${hash}.json`, { cache: "force-cache", signal: AbortSignal.timeout(2000) });
         if (snapshotRes.ok) {
           initialData = await snapshotRes.json() as HomePayload;
           const firstHero = initialData?.hero?.[0];

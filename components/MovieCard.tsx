@@ -76,6 +76,8 @@ export function MovieCard({
             <img
               src={imageSrc}
               alt={movie.name}
+              width={400}
+              height={600}
               loading={priority ? "eager" : "lazy"}
               fetchPriority={priority ? "high" : undefined}
               decoding="async"

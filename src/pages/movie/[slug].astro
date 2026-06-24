@@ -94,6 +94,16 @@ const movieCard = {
 
 <BaseLayout title={title} description={description} image={metaImage} type="video.movie" navSourceFallback={navSourceKey}>
   <Fragment slot="head">
+    {heroImage && (
+      heroSigned?.m && heroSigned?.d ? (
+        <>
+          <link rel="preload" as="image" href={heroSigned.m} media="(max-width: 767px)" fetchpriority="high" />
+          <link rel="preload" as="image" href={heroSigned.d} media="(min-width: 768px)" fetchpriority="high" />
+        </>
+      ) : (
+        <link rel="preload" as="image" href={heroImage} fetchpriority="high" />
+      )
+    )}
     <script is:inline>
       document.addEventListener("click", (event) => {
         const link = event.target instanceof Element ? event.target.closest("a[data-movie-episode-link]") : null;
@@ -125,7 +135,7 @@ const movieCard = {
         <picture>
           <source media="(max-width: 767px)" srcset={heroSigned?.m || heroImage} />
           <source media="(min-width: 768px)" srcset={heroSigned?.d || heroImage} />
-          <img src={heroSigned?.d || heroImage} alt="" class="absolute inset-0 h-full w-full object-cover opacity-60" fetchpriority="low" loading="lazy" decoding="async" />
+          <img src={heroSigned?.d || heroImage} alt="" class="absolute inset-0 h-full w-full object-cover opacity-60" fetchpriority="high" loading="eager" decoding="async" />
         </picture>
       )}
       <div class="absolute inset-0 bg-gradient-to-b from-obsidian/30 via-obsidian/80 to-obsidian"></div>
