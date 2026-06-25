@@ -1,10 +1,12 @@
 import { refreshLatestOphimMovies } from "@/lib/ophim";
 import { setCacheBypassRefresh, setRuntimeEnv } from "@/lib/runtime-env";
 import { generateSnapshots } from "@/lib/snapshot";
+import { refreshTrendingMovies } from "@/lib/trending";
 
 type WorkerEnv = {
   OPHIM_REFRESH_MAX_MOVIES?: string;
   OPHIM_REFRESH_DELAY_MS?: string;
+  TMDB_API_TOKEN?: string;
   [key: string]: unknown;
 };
 
@@ -33,7 +35,16 @@ export default {
         maxMovies: numericEnv(env, "OPHIM_REFRESH_MAX_MOVIES"),
         delayMs: numericEnv(env, "OPHIM_REFRESH_DELAY_MS")
       });
-      
+
+      try {
+        const trendingResult = await refreshTrendingMovies(env.TMDB_API_TOKEN);
+        console.log("[cache] TMDB_TRENDING_REFRESH", trendingResult);
+      } catch (trendingError) {
+        console.error("[cache] TMDB_TRENDING_REFRESH_FAIL", {
+          error: trendingError instanceof Error ? trendingError.message : String(trendingError)
+        });
+      }
+
       const snapshotResult = await generateSnapshots();
 
       console.log("[cache] OPHIM_REFRESH_SUCCESS", {

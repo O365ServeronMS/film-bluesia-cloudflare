@@ -12,6 +12,7 @@ import type {
   SourceTaxonomyPayload
 } from "@/lib/types";
 import { buildSmartSpotlight, type SpotlightCandidate } from "@/lib/spotlight";
+import { getTrendingTmdbIds } from "@/lib/trending";
 import {
   beginKvWriteBudget,
   finishKvWriteBudget,
@@ -372,7 +373,7 @@ export async function getList(type: string, page = 1, limit = 24, country?: stri
   const query = new URLSearchParams({
     page: String(safePage),
     limit: String(safeLimit),
-    sort_field: apiListType === "phim-moi-cap-nhat" ? "modified.time" : "modified",
+    sort_field: "modified.time",
     sort_type: "desc"
   });
 
@@ -488,8 +489,10 @@ export async function getHome(): Promise<HomePayload> {
     ...singleHanQuocValue.items.map((movie, order) => ({ movie, source: "single-han-quoc", order }))
   ];
 
+  const trendingIds = await getTrendingTmdbIds().catch(() => new Set<string>());
+
   return {
-    hero: buildSmartSpotlight(candidates, 24),
+    hero: buildSmartSpotlight(candidates, 24, trendingIds),
     sections: [
       { title: "Phim mới cập nhật", href: "/list/phim-moi-cap-nhat", items: latestValue.items.slice(0, 24) },
       { title: "Phim lẻ", href: "/list/phim-le", items: singleValue.items },

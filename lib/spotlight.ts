@@ -109,7 +109,9 @@ function imageScore(movie: MovieCard) {
   return -45;
 }
 
-export function baseSpotlightScore(movie: MovieCard, sources: string[] = [], order = 0) {
+export const TRENDING_SPOTLIGHT_BONUS = 22;
+
+export function baseSpotlightScore(movie: MovieCard, sources: string[] = [], order = 0, trending = false) {
   const sourceScore = sources.reduce((total, source) => total + (SOURCE_BONUS[source] || 0), 0);
   const orderScore = Math.max(0, 10 - Math.floor(order / 3));
   const jitter = stableNoise(movie.slug) * 4;
@@ -122,7 +124,8 @@ export function baseSpotlightScore(movie: MovieCard, sources: string[] = [], ord
     contentScore(movie, sources) +
     imageScore(movie) +
     orderScore +
-    jitter
+    jitter +
+    (trending ? TRENDING_SPOTLIGHT_BONUS : 0)
   );
 }
 
@@ -163,7 +166,23 @@ function mergeMovie(a: MovieCard, b: MovieCard): MovieCard {
   };
 }
 
-export function buildSmartSpotlight(candidates: SpotlightCandidate[], limit = 24) {
+function movieRating(movie: MovieCard) {
+  return Math.max(numberValue(movie.imdb?.rating), numberValue(movie.tmdb?.vote_average));
+}
+
+function pickPinnedAuMy<T extends { movie: MovieCard; order: number; sources: Set<string> }>(entries: T[]) {
+  return entries.reduce<T | undefined>((best, entry) => {
+    if (!entry.sources.has("single-au-my") || !(entry.movie.thumb || entry.movie.poster)) return best;
+    if (!best) return entry;
+    const rating = movieRating(entry.movie);
+    const bestRating = movieRating(best.movie);
+    if (rating > bestRating) return entry;
+    if (rating === bestRating && entry.order < best.order) return entry;
+    return best;
+  }, undefined);
+}
+
+export function buildSmartSpotlight(candidates: SpotlightCandidate[], limit = 24, trendingIds: Set<string> = new Set()) {
   const bySlug = new Map<string, { movie: MovieCard; sources: Set<string>; firstOrder: number }>();
 
   candidates.forEach((candidate, index) => {
@@ -185,15 +204,23 @@ export function buildSmartSpotlight(candidates: SpotlightCandidate[], limit = 24
     });
   });
 
-  return Array.from(bySlug.values())
-    .map((entry) => ({
-      movie: entry.movie,
-      score: baseSpotlightScore(entry.movie, Array.from(entry.sources), entry.firstOrder),
-      order: entry.firstOrder
-    }))
-    .sort((a, b) => b.score - a.score || a.order - b.order)
-    .slice(0, limit)
-    .map((entry) => entry.movie);
+  const ranked = Array.from(bySlug.values())
+    .map((entry) => {
+      const tmdbId = entry.movie.tmdb?.id;
+      const trending = tmdbId != null && trendingIds.has(String(tmdbId));
+      return {
+        movie: entry.movie,
+        sources: entry.sources,
+        score: baseSpotlightScore(entry.movie, Array.from(entry.sources), entry.firstOrder, trending),
+        order: entry.firstOrder
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.order - b.order);
+
+  const pinned = pickPinnedAuMy(ranked);
+  const ordered = pinned ? [pinned, ...ranked.filter((entry) => entry !== pinned)] : ranked;
+
+  return ordered.slice(0, limit).map((entry) => entry.movie);
 }
 
 export function splitLabels(value?: string) {
