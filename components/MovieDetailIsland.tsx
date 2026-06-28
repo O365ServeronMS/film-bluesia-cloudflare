@@ -109,6 +109,19 @@ export function MovieDetailIsland() {
     };
   }, []);
 
+  // Episode selection reloads the shell with a `#player` hash, but the native
+  // anchor scroll misses because detail is client-rendered. Once rendered, bring
+  // the player into view with a gentle smooth scroll so the user can press play.
+  useEffect(() => {
+    if (!movie || window.location.hash !== "#player") return;
+    const player = document.getElementById("player");
+    if (!player) return;
+    const raf = requestAnimationFrame(() => {
+      player.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [movie?.slug]);
+
   // Fire-and-forget recommendations ("Bạn cũng có thể thích"). Must not block render.
   useEffect(() => {
     const tmdbId = movie?.tmdb?.id;
