@@ -53,9 +53,9 @@ npm run deploy    # Build + wrangler deploy (static assets; only when explicitly
 
 On Windows use `npm.cmd`.
 
-> **Local data fetch caveat:** `catalog-api` CORS is locked to `https://film.bluesia.net`, so islands cannot load data from `localhost`. Verify data flows on the deployed site, not via local preview.
+> **CORS:** `catalog-api` allowlists every `*.bluesia.net` subdomain **and** `http://localhost:<port>`, so islands load catalog data fine in `npm run dev`/`preview` as well as in production. (Requests are simple GETs — `Accept: application/json` is safelisted, no preflight.)
 
-**Deploy** = `git push origin main` (Cloudflare auto-deploys the static assets) or `npm run deploy`. Confirm before committing/pushing unless told otherwise.
+**Deploy** = `git push origin main` (Cloudflare auto-deploys the static assets) or `npm run deploy`. Confirm before committing/pushing unless told otherwise. Production must run on a `*.bluesia.net` host for catalog-api CORS to apply.
 
 ---
 
@@ -216,7 +216,7 @@ User hierarchy: **Category/List → `/movie/<slug>` (detail + player) → episod
 2. UI changes: verify `MovieCard`, `SectionRow`, list/search/home, and mobile layout.
 3. Data/image changes: confirm rendered image URLs are `catalog-api` pre-signed `i/{m|d}/…` with no client signing and no new variant.
 4. Navigation changes: run the anti-regression test (category → movie → multiple episodes → Back once → correct list + tab).
-5. Data flows can only be fully verified on the deployed `film.bluesia.net` (CORS).
+5. Data flows can be verified locally (`npm run dev`) — catalog-api allowlists `localhost` and every `*.bluesia.net` origin.
 
 ---
 

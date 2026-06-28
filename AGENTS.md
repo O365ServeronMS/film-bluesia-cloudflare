@@ -50,7 +50,7 @@
 - Build target is **static** output (`output: "static"`); deploy is static assets only (no Worker, no adapter).
 - **Everything in `lib/` and `components/` runs in the browser.** No Node builtins, no `process.env` (use `import.meta.env.PUBLIC_*`), no filesystem.
 - Dynamic routes: list types are prerendered via `getStaticPaths`; `/movie/*` is a client-rendered shell reached through `public/_redirects` (200 rewrite); `/watch/*` 301s to `/movie/:splat`.
-- `catalog-api` CORS is locked to `https://film.bluesia.net`, so data only loads on the deployed origin (not `localhost`).
+- `catalog-api` CORS allowlists every `*.bluesia.net` subdomain and `http://localhost:<port>`, so catalog data loads in local dev as well as production (simple GETs, no preflight).
 - Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Never proxy or re-chunk video. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery.
 - Playback source priority: desktop and Android prefer iframe/embed playback; iOS prefers native HLS. MSE fallback must retain the dynamically imported light build at `hls.js/dist/hls.light.js`.
 
@@ -66,7 +66,7 @@
 - On Windows, prefer `npm.cmd` over `npm` for all npm commands and scripts.
 - `npm run dev`: start the local Astro development server.
 - `npm run build`: create the static build (`dist/`). This is the only automated gate.
-- `npm run preview`: build, then serve `dist/` locally via wrangler (data won't load locally — see CORS note).
+- `npm run preview`: build, then serve `dist/` locally via wrangler (catalog data loads — localhost is CORS-allowlisted).
 - `npm run deploy`: build and deploy the static assets through Wrangler; run only when deployment is explicitly requested.
 
 ## Editing Rules
