@@ -1,5 +1,13 @@
 # Agent Guide
 
+> **Architecture (current): zero-Worker static + catalog-api.** This project is now
+> deployed as **static assets only** (Astro `output: "static"`, no Cloudflare Worker,
+> no SSR). All catalog data, TMDB metadata, and pre-signed images come from the VPS
+> `catalog-api` at `img.bluesia.net/api/*`, fetched **client-side** via `lib/catalog.ts`.
+> There is no OPhim client, KV, image signing, HTML cache, metadata snapshot, or refresh
+> cron in this repo — `catalog-api` owns all of it. **`CLAUDE.md` is the authoritative
+> guide;** sections below that describe Worker/KV/SSR/snapshot internals are historical.
+
 ## Behavioral Guidelines
 *Adapted from core AI principles.*
 
@@ -35,15 +43,15 @@
 
 ## Project Purpose
 - FilmBluesia is an Astro + React movie streaming/catalog app for `film.bluesia.net`.
-- It fetches OPhim metadata, renders movie lists and unified detail/playback pages, uses signed URLs for the shared external image cache, and runs on Cloudflare through the Astro Cloudflare adapter.
-- Runtime storage is Cloudflare-native: Cache API, KV-compatible metadata storage, R2 image storage, and browser `localStorage` for user state.
+- It renders movie lists and a client-rendered detail/playback page from data served by the VPS `catalog-api` (`img.bluesia.net/api/*`): OPhim catalog + TMDB metadata + pre-signed images, cached in Valkey. The frontend deploys as static Cloudflare assets (no Worker, no SSR).
+- The only runtime storage in the frontend is browser `localStorage` (favorites/history). All catalog state lives on the VPS.
 
 ## Runtime Assumptions
-- Build target is server output for Cloudflare Workers/Pages.
-- Keep Cloudflare compatibility: avoid Node-only runtime APIs unless already supported by the configured adapter/compat flags.
-- Do not add filesystem runtime persistence; Cloudflare runtime does not provide durable local files.
-- Public site URL and cache versioning are configured in `astro.config.mjs`, `src/middleware.ts`, and `wrangler.jsonc`; production HTML cache keys are deployment-scoped through the `WORKER_VERSION` binding, with `HTML_CACHE_VERSION` only as a fallback.
-- Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Do not proxy or re-chunk video through Cloudflare Worker. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery. Default buffer should remain conservative; 5-minute buffer is an upper cap for good-network aggressive mode, not the universal default.
+- Build target is **static** output (`output: "static"`); deploy is static assets only (no Worker, no adapter).
+- **Everything in `lib/` and `components/` runs in the browser.** No Node builtins, no `process.env` (use `import.meta.env.PUBLIC_*`), no filesystem.
+- Dynamic routes: list types are prerendered via `getStaticPaths`; `/movie/*` is a client-rendered shell reached through `public/_redirects` (200 rewrite); `/watch/*` 301s to `/movie/:splat`.
+- `catalog-api` CORS is locked to `https://film.bluesia.net`, so data only loads on the deployed origin (not `localhost`).
+- Video playback policy: M3U8/HLS chunking is delegated to upstream segments. Never proxy or re-chunk video. Optimize only client-side HLS buffer, retry, lazy loading, native HLS fallback, and error recovery.
 - Playback source priority: desktop and Android prefer iframe/embed playback; iOS prefers native HLS. MSE fallback must retain the dynamically imported light build at `hls.js/dist/hls.light.js`.
 
 ## Token-Saving Workflow
@@ -57,12 +65,9 @@
 ## Local Commands
 - On Windows, prefer `npm.cmd` over `npm` for all npm commands and scripts.
 - `npm run dev`: start the local Astro development server.
-- `npm run build`: create the Cloudflare server build.
-- `npm run preview`: build, then serve the generated Cloudflare Worker configuration through Astro preview.
-- `npm run test:image-normalization`: run the deterministic image metadata normalization checks.
-- `npm run test:ophim-latest-order`: verify the latest OPhim request uses `modified.time` and preserves the source's first 24 movies in order.
-- `npm run scan:image-hosts`: fetch the latest OPhim page and report observed poster/thumb hosts; this is a networked diagnostic and does not modify the allowlist.
-- `npm run deploy`: build and deploy through Wrangler; run only when deployment is explicitly requested.
+- `npm run build`: create the static build (`dist/`). This is the only automated gate.
+- `npm run preview`: build, then serve `dist/` locally via wrangler (data won't load locally — see CORS note).
+- `npm run deploy`: build and deploy the static assets through Wrangler; run only when deployment is explicitly requested.
 
 ## Editing Rules
 - Keep edits narrow and consistent with existing Astro/React/Tailwind patterns.
@@ -77,16 +82,11 @@
 - Keep device detection, playback URL validation, and iframe/native-HLS/hls.js fallback ordering centralized in `lib/playback.ts`; do not duplicate that source-selection logic in player components.
 
 ## Image Cache Contract
-- Active poster/backdrop rendering must use the external signed image cache at `img.bluesia.net` via `lib/image-cache.ts`.
-- The legacy `/api/image` endpoint and `proxiedImage()` helper are deleted and must not be re-introduced for active rendering.
-- Only two image variants are allowed: `m` (mobile) and `d` (desktop). Do not send width, quality, profile, DPR, format, or AVIF parameters from frontend code.
-- HMAC signing secret (`IMAGE_CACHE_SIGNING_SECRET`) must stay server-side only. Never use a `PUBLIC_` prefix or expose it to client/browser code.
-- `lib/image-cache.ts` is the canonical helper for building signed image URLs. Use `buildCachedImageUrl()` or `buildCachedImagePair()` from there.
-- When signed URLs are unavailable (missing env vars), components fall back to raw upstream URLs, not to a proxy endpoint.
-- OG/meta image tags use the signed desktop variant (`thumbSigned?.d || posterSigned?.d`) with raw upstream fallback.
-- TMDB/OPhim metadata fetching and normalization are unchanged; only the image delivery URLs changed.
-- Responsive image rendering must use both `m` and `d` variants via `srcset` or `<picture>`. The `img` tag's `src` fallback must be the `d` (desktop) variant. Do not hard-code `m` variants for all cards.
-- Shared Image Cache Invariant: Both `film.bluesia.net` and `phim.bluesia.net` must generate exactly the same image cache URL. The cache key MUST be derived ONLY from the normalized upstream image URL and variant (`m` or `d`). It MUST NOT include the requester site domain, frontend name, page route, or any frontend-specific params.
+- Images arrive **pre-signed** from `catalog-api`. The frontend never signs, re-keys, or mints variants — there is no `lib/image-cache.ts` anymore.
+- Each item carries `thumb_url` = pre-signed `/i/m/…` (TMDB poster, portrait) and `poster_url` = pre-signed `/i/d/…` (TMDB backdrop, landscape). Only two variants per movie: `m` and `d`.
+- `normalizeCard()` (in `lib/catalog.ts`) sets `MovieCard.thumb`/`poster` to these URLs and leaves `thumbSigned`/`posterSigned` undefined. `MovieCard.tsx` renders a single `<img src={thumb}>` with `poster` as the on-error fallback (global handler in `BaseLayout.astro`). Do not reintroduce a `{m,d}` `srcset`/`<picture>` pair — the cache holds one size per orientation.
+- Shared Image Cache Invariant: `film.bluesia.net` and `phim.bluesia.net` generate identical cache URLs for the same upstream image. The key is derived ONLY from `sha256(upstreamUrl)+variant`. Never add the requester domain, route, or frontend-specific params, and never create a third/site-specific variant.
+- TMDB attribution is required by ToS and lives in `BaseLayout.astro` + `settings.astro`. Do not remove it.
 
 ## Web Lazy-Loading Rules
 - Keep the first visible home Hero image as the only high-priority image (`loading="eager"` and `fetchpriority="high"`) because it is the expected LCP element. Do not lazy-load it.
@@ -97,11 +97,10 @@
 - Adaptive prefetch must continue to respect slow connections and browser data-saving preferences. Do not add broad route or media preloads that compete with the Hero LCP request.
 
 ## Verification Rules
-- Run `npm run build` when code changes are made and it is reasonable.
-- `package.json` currently has no lint or dedicated typecheck script. For image normalization changes, also run `npm run test:image-normalization`.
+- Run `npm run build` when code changes are made — it is the only automated gate (no lint/typecheck script). It must emit static `dist/` with no `_worker.js`.
 - For UI changes, verify shared components first: `MovieCard`, `SectionRow`, list/search/home usage, and mobile layout classes.
-- For home hero or broad visual changes, verify interaction and console state at both desktop and mobile viewports and update `docs/design-qa.md` plus its evidence images when the reference comparison materially changes.
-- For Cloudflare/cache changes, inspect `src/middleware.ts`, `lib/cache.ts`, `lib/ophim.ts`, `src/worker.ts`, and `docs/CLOUDFLARE_CACHE.md`.
+- For data/image changes, confirm rendered URLs are `catalog-api` pre-signed `i/{m|d}/…` with no client-side signing and no new variant. Full data flows only verify on the deployed `film.bluesia.net` (CORS).
+- For catalog client changes, inspect `lib/catalog.ts` and the islands that consume it (`HomeIsland`, `ListIsland`, `SearchResults`, `SearchSuggest`, `MovieDetailIsland`).
 
 ## Response Format
 - Report changed files and one-line purpose for each.

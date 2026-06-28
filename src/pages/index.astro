@@ -2,50 +2,10 @@
 import BaseLayout from "@/src/layouts/BaseLayout.astro";
 import { HomeIsland } from "@/components/HomeIsland";
 import { createReturnToPath } from "@/lib/navigation";
-import type { HomePayload } from "@/lib/types";
 
 const returnTo = createReturnToPath(Astro.url.pathname, Astro.url.search);
-
-let initialData: HomePayload | null = null;
-let preloadImages: { m?: string; d?: string; raw?: string } | null = null;
-
-try {
-  const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
-  if (baseUrl) {
-    const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store", signal: AbortSignal.timeout(2000) });
-    if (manifestRes.ok) {
-      const manifest = await manifestRes.json();
-      const hash = manifest.snapshots?.home?.hash;
-      if (hash) {
-        const snapshotRes = await fetch(`${baseUrl}/home/${hash}.json`, { cache: "force-cache", signal: AbortSignal.timeout(2000) });
-        if (snapshotRes.ok) {
-          initialData = await snapshotRes.json() as HomePayload;
-          const firstHero = initialData?.hero?.[0];
-          if (firstHero) {
-             const signed = firstHero.thumbSigned || firstHero.posterSigned;
-             preloadImages = { m: signed?.m, d: signed?.d, raw: firstHero.thumb || firstHero.poster };
-          }
-        }
-      }
-    }
-  }
-} catch (e) {
-  // Ignore fetch errors, fallback to client-side hydration
-}
 ---
 
 <BaseLayout>
-  {preloadImages && (
-    <Fragment slot="head">
-      {preloadImages.m && preloadImages.d ? (
-        <>
-          <link rel="preload" as="image" href={preloadImages.m} media="(max-width: 767px)" fetchpriority="high" />
-          <link rel="preload" as="image" href={preloadImages.d} media="(min-width: 768px)" fetchpriority="high" />
-        </>
-      ) : preloadImages.raw ? (
-        <link rel="preload" as="image" href={preloadImages.raw} fetchpriority="high" />
-      ) : null}
-    </Fragment>
-  )}
-  <HomeIsland client:load returnTo={returnTo} initialData={initialData} />
+  <HomeIsland client:load returnTo={returnTo} />
 </BaseLayout>

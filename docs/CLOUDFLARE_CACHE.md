@@ -1,5 +1,11 @@
 # Cloudflare cache bindings
 
+> **SUPERSEDED (zero-Worker static migration).** The Worker + KV + HTML Cache API +
+> image-signing setup described below has been removed. The site now deploys as
+> static assets only; all catalog data, metadata, and pre-signed images come from
+> the VPS `catalog-api` (`img.bluesia.net/api/*`), cached in Valkey on the VPS. See
+> `CLAUDE.md`. Kept for historical reference.
+
 The FilmBluesia Worker keeps only the runtime bindings it actively uses.
 
 ## Required bindings

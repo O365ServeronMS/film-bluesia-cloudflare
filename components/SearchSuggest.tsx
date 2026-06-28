@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { searchMovies } from "@/lib/catalog";
 import type { MovieCard } from "@/lib/types";
 
 type SearchSuggestProps = {
@@ -48,16 +49,9 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false, syncWithUr
     const timer = window.setTimeout(async () => {
       setState("loading");
       try {
-        const params = new URLSearchParams({ keyword: q, limit: String(SUGGESTION_LIMIT) });
-        const res = await fetch("/api/ophim/search?" + params.toString(), {
-          signal: controller.signal,
-          headers: { Accept: "application/json" }
-        });
-
-        if (!res.ok) throw new Error("Search request failed");
-
-        const data = await res.json() as { items?: MovieCard[] };
-        const nextItems = Array.isArray(data.items) ? data.items.slice(0, SUGGESTION_LIMIT) : [];
+        const data = await searchMovies(q, 1);
+        if (controller.signal.aborted) return;
+        const nextItems = data.items.slice(0, SUGGESTION_LIMIT);
         setItems(nextItems);
         setState(nextItems.length > 0 ? "ready" : "empty");
       } catch {
@@ -133,7 +127,7 @@ export function SearchSuggest({ initialQuery = "", autoFocus = false, syncWithUr
                           </>
                         ) : null}
                         <img
-                          src={movie.thumbSigned?.d || movie.posterSigned?.d || movie.poster || movie.thumb || ""}
+                          src={movie.thumb || movie.poster || ""}
                           alt=""
                           className="h-full w-full object-cover"
                           loading="lazy"

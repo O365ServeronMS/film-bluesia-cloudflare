@@ -5,17 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "test:image-normalization": "node --no-warnings --experimental-strip-types scripts/test-image-normalization.mjs",
-    "test:kv-write-resilience": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-kv-write-resilience.mjs",
-    "test:security-controls": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-security-controls.mjs",
-    "test:ophim-latest-order": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-ophim-latest-order.mjs",
-    "test:snapshot": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/test-snapshot.mjs",
-    "scan:image-hosts": "node --no-warnings --experimental-strip-types --import ./scripts/register-alias.mjs scripts/scan-ophim-image-hosts.mjs",
     "preview": "astro build && astro preview",
-    "deploy": "astro build && wrangler deploy",
-    "build:refresh": "wrangler deploy --dry-run --outdir dist-refresh -c wrangler-refresh.jsonc",
-    "dry-run:refresh": "wrangler deploy --dry-run -c wrangler-refresh.jsonc",
-    "deploy:refresh": "wrangler deploy -c wrangler-refresh.jsonc"
+    "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.0.0",
@@ -37,6 +28,7 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.1",
     "sharp": "^0.35.2",
     "wrangler": "latest"
   },

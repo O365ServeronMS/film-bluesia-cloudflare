@@ -2,45 +2,26 @@ import { useState, useEffect } from "react";
 import { HeroSlider } from "./HeroSlider";
 import { SectionRow } from "./SectionRow";
 import { TopBar } from "./TopBar";
+import { getHome } from "@/lib/catalog";
 import type { HomePayload } from "@/lib/types";
 
-export function HomeIsland({ returnTo, initialData }: { returnTo: string; initialData?: HomePayload | null }) {
-  const [data, setData] = useState<HomePayload | null>(initialData || null);
+export function HomeIsland({ returnTo }: { returnTo: string }) {
+  const [data, setData] = useState<HomePayload | null>(null);
   const [visibleSections, setVisibleSections] = useState<number>(2);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      if (initialData) return; // Skip fetch if SSR provided data
-      try {
-        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
-        if (!baseUrl) throw new Error("Snapshot Base URL not configured");
-        const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store" });
-        if (!manifestRes.ok) throw new Error("Manifest fetch failed");
-        
-        const manifest = await manifestRes.json();
-        const hash = manifest.snapshots?.home?.hash;
-        if (!hash) throw new Error("No home snapshot in manifest");
-        
-        const snapshotRes = await fetch(`${baseUrl}/home/${hash}.json`, { cache: "force-cache" });
-        if (!snapshotRes.ok) throw new Error("Snapshot fetch failed");
-        
-        setData(await snapshotRes.json());
-      } catch (err) {
-        console.warn("[HomeIsland] Snapshot failed, falling back to API", err);
-        try {
-          const apiRes = await fetch("/api/ophim/home");
-          if (!apiRes.ok) throw new Error("API fallback failed");
-          setData(await apiRes.json());
-        } catch (apiErr) {
-          console.error("[HomeIsland] API fallback failed", apiErr);
-          setError(true);
-        }
-      }
-    }
-    
-    loadData();
-  }, [initialData]);
+    let active = true;
+    getHome()
+      .then((home) => active && setData(home))
+      .catch((err) => {
+        console.error("[HomeIsland] Failed to load home-data", err);
+        if (active) setError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (data && visibleSections <= data.sections.length) {

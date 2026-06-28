@@ -1,5 +1,12 @@
 # File Map
 
+> **Partially historical.** After the zero-Worker static migration, the Worker, SSR
+> API routes (`src/pages/api/*`), `src/middleware.ts`, and the `lib/` server modules
+> (`ophim`, `cache`, `image-cache`, `snapshot`, `trending`, `runtime-env`, …) were
+> deleted. Catalog data now flows through `lib/catalog.ts` → `img.bluesia.net/api/*`,
+> and `/movie/<slug>` is the client shell `src/pages/movie/index.astro` +
+> `components/MovieDetailIsland.tsx`. See `CLAUDE.md` for the current map.
+
 ## Root And Config
 
 - `package.json`: scripts, dependencies, browser targets. Build command is `npm run build`.

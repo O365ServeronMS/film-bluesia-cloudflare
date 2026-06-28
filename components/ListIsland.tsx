@@ -2,15 +2,8 @@ import { useState, useEffect } from "react";
 import { MovieCard } from "./MovieCard";
 import { TopBar } from "./TopBar";
 import { Pagination } from "./Pagination";
-import type { MovieListPayload, SourceLabel } from "@/lib/types";
-
-const typeToSnapshotKey: Record<string, string> = {
-  "phim-moi-cap-nhat": "list-latest",
-  "phim-le": "list-single",
-  "phim-bo": "list-series",
-  "tv-shows": "list-tvshows",
-  "hoat-hinh": "list-hoathinh"
-};
+import { getCategories, getCountries, getCountry, getGenre, getList } from "@/lib/catalog";
+import type { ListPayload, SourceLabel } from "@/lib/types";
 
 const quickCountries = [
   { label: "Âu Mỹ", slug: "au-my" },
@@ -25,16 +18,8 @@ function safeFilterSlug(value: string | null | undefined) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : "";
 }
 
-function normalizeTaxonomy(items: SourceLabel[]) {
-  return items.flatMap((item) => {
-    const name = String(item?.name || "").trim();
-    const slug = safeFilterSlug(item?.slug);
-    return name && slug ? [{ name, slug }] : [];
-  });
-}
-
 export function ListIsland({ type, returnTo }: { type: string; returnTo: string }) {
-  const [data, setData] = useState<MovieListPayload | null>(null);
+  const [data, setData] = useState<ListPayload | null>(null);
   const [countries, setCountries] = useState<SourceLabel[]>([]);
   const [categories, setCategories] = useState<SourceLabel[]>([]);
   const [visibleItems, setVisibleItems] = useState<number>(12);
@@ -50,100 +35,37 @@ export function ListIsland({ type, returnTo }: { type: string; returnTo: string 
   const supportsCategoryFilter = categoryFilterableTypes.has(type);
   
   useEffect(() => {
+    let active = true;
+
     async function loadData() {
       try {
-        const baseUrl = import.meta.env.PUBLIC_SNAPSHOT_BASE_URL;
-        let listData: MovieListPayload | null = null;
-        let cData: SourceLabel[] = [];
-        let catData: SourceLabel[] = [];
-        
-        // Only use snapshot if page 1 and no filters
-        const canUseSnapshot = page === 1 && !requestedCountry && !requestedCategory;
-        const snapshotKey = typeToSnapshotKey[type];
-        
-        let manifest: any = null;
-        if (baseUrl && (canUseSnapshot || supportsCountryFilter || supportsCategoryFilter)) {
-          try {
-            const manifestRes = await fetch(`${baseUrl}/manifest/latest.json`, { cache: "no-store" });
-            if (manifestRes.ok) manifest = await manifestRes.json();
-          } catch (err) {
-            console.warn("[ListIsland] Manifest fetch failed", err);
-          }
-        }
+        // catalog-api can't combine type + country/genre, so route filters to the
+        // dedicated endpoints (country wins over genre when both are set).
+        const listPromise = requestedCountry
+          ? getCountry(requestedCountry, page)
+          : requestedCategory
+            ? getGenre(requestedCategory, page)
+            : getList(type, page);
 
-        const promises = [];
-
-        // 1. Fetch List Data
-        if (canUseSnapshot && manifest && snapshotKey && manifest.snapshots?.[snapshotKey]?.hash) {
-          promises.push(
-            fetch(`${baseUrl}/${snapshotKey}/${manifest.snapshots[snapshotKey].hash}.json`, { cache: "force-cache" })
-              .then(res => {
-                if (!res.ok) throw new Error("List snapshot failed");
-                return res.json();
-              })
-              .then(json => { listData = json; })
-              .catch(err => {
-                console.warn("[ListIsland] List snapshot fallback", err);
-                return fetch(`/api/ophim/list/${type}?page=${page}&country=${requestedCountry}&category=${requestedCategory}`)
-                  .then(res => {
-                    if (!res.ok) throw new Error("List API failed");
-                    return res.json();
-                  })
-                  .then(json => { listData = json; });
-              })
-          );
-        } else {
-          promises.push(
-            fetch(`/api/ophim/list/${type}?page=${page}&country=${requestedCountry}&category=${requestedCategory}`)
-              .then(res => {
-                if (!res.ok) throw new Error("List API failed");
-                return res.json();
-              })
-              .then(json => { listData = json; })
-          );
-        }
-
-        // 2. Fetch Countries
+        const tasks: Promise<void>[] = [
+          listPromise.then((payload) => { if (active) setData(payload); })
+        ];
         if (supportsCountryFilter) {
-          if (manifest && manifest.snapshots?.countries?.hash) {
-            promises.push(
-              fetch(`${baseUrl}/countries/${manifest.snapshots.countries.hash}.json`, { cache: "force-cache" })
-                .then(res => res.ok ? res.json() : fetch("/api/ophim/countries").then(r => r.json()))
-                .then(json => { cData = normalizeTaxonomy(json); })
-                .catch(() => {})
-            );
-          } else {
-            promises.push(fetch("/api/ophim/countries").then(r => r.json()).then(json => { cData = normalizeTaxonomy(json); }).catch(() => {}));
-          }
+          tasks.push(getCountries().then((items) => { if (active) setCountries(items); }).catch(() => {}));
         }
-
-        // 3. Fetch Categories
         if (supportsCategoryFilter) {
-          if (manifest && manifest.snapshots?.categories?.hash) {
-            promises.push(
-              fetch(`${baseUrl}/categories/${manifest.snapshots.categories.hash}.json`, { cache: "force-cache" })
-                .then(res => res.ok ? res.json() : fetch("/api/ophim/categories").then(r => r.json()))
-                .then(json => { catData = normalizeTaxonomy(json); })
-                .catch(() => {})
-            );
-          } else {
-            promises.push(fetch("/api/ophim/categories").then(r => r.json()).then(json => { catData = normalizeTaxonomy(json); }).catch(() => {}));
-          }
+          tasks.push(getCategories().then((items) => { if (active) setCategories(items); }).catch(() => {}));
         }
 
-        await Promise.all(promises);
-        
-        if (!listData) throw new Error("No list data loaded");
-        setData(listData);
-        setCountries(cData);
-        setCategories(catData);
+        await Promise.all(tasks);
       } catch (err) {
         console.error("[ListIsland] Failed to load", err);
-        setError(true);
+        if (active) setError(true);
       }
     }
-    
+
     loadData();
+    return () => { active = false; };
   }, [type, page, requestedCountry, requestedCategory, supportsCategoryFilter, supportsCountryFilter]);
 
   useEffect(() => {

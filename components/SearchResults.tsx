@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { MovieCard } from "@/components/MovieCard";
+import { searchMovies } from "@/lib/catalog";
 import { createReturnToPath } from "@/lib/navigation";
 import type { ListPayload } from "@/lib/types";
 
@@ -62,18 +63,10 @@ export function SearchResults() {
       const requestController = new AbortController();
       controller = requestController;
       setState({ status: "loading", ...location });
-      const params = new URLSearchParams({ keyword: location.query, page: String(location.page), limit: "30" });
 
-      fetch(`/api/ophim/search?${params.toString()}`, {
-        signal: requestController.signal,
-        cache: "no-store",
-        headers: { Accept: "application/json" }
-      })
-        .then((response) => {
-          if (!response.ok) throw new Error("Search request failed");
-          return response.json() as Promise<ListPayload>;
-        })
+      searchMovies(location.query, location.page)
         .then((data) => {
+          if (requestController.signal.aborted) return;
           setState({ status: "ready", ...location, data });
           document.title = `${data.title || "Tìm kiếm"} - Bluesia Cinema`;
         })

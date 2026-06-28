@@ -1,49 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "film",
-  "main": "src/worker.ts",
-  "assets": {
-    "binding": "ASSETS"
-  },
   "compatibility_date": "2026-05-30",
-  "compatibility_flags": ["nodejs_compat"],
+  // Static-assets-only deployment — no Worker entry (`main`), no KV, no signing
+  // secrets. All catalog data is served by the VPS catalog-api at
+  // img.bluesia.net/api/*. /movie/* and /watch/* routing lives in public/_redirects.
+  "assets": {
+    "directory": "dist"
+  },
   "routes": [
     {
       "pattern": "film.bluesia.net",
       "custom_domain": true
     }
-  ],
-  "observability": {
-    "enabled": true,
-    "logs": {
-      "enabled": true,
-      "head_sampling_rate": 0.01,
-      "invocation_logs": true,
-      "persist": true
-    }
-  },
-  "version_metadata": {
-    "binding": "WORKER_VERSION"
-  },
-  "ratelimits": [
-    {
-      "name": "SEARCH_RATE_LIMITER",
-      "namespace_id": "2026062201",
-      "simple": {
-        "limit": 60,
-        "period": 60
-      }
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "e16247af8b894bdaa78723303149b900"
-    }
-  ],
-  "vars": {
-    "IMAGE_CACHE_BASE_URL": "https://img.bluesia.net",
-    "SNAPSHOT_BASE_URL": "https://data.bluesia.net",
-    "PUBLIC_SNAPSHOT_BASE_URL": "https://data.bluesia.net"
-  }
+  ]
 }

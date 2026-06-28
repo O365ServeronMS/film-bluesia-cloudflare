@@ -1,0 +1,6 @@
+# Legacy /watch/<slug> → canonical /movie/<slug>
+/watch/* /movie/:splat 301
+
+# /movie/<slug> is client-rendered: serve the static shell for every movie path
+# (200 rewrite keeps the URL). MovieDetailIsland reads the slug from the URL.
+/movie/* /movie/index.html 200

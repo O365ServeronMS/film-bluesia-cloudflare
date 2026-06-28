@@ -1,5 +1,12 @@
 # Decisions And Anti-Regression Rules
 
+> **Architecture update (zero-Worker static + catalog-api).** The site is now a
+> static, no-Worker deployment that fetches all catalog data, TMDB metadata, and
+> pre-signed images from the VPS `catalog-api` (`img.bluesia.net/api/*`) client-side.
+> Decisions below about SSR, the data Worker, KV metadata cache, HTML Cache API,
+> image signing in-app, and metadata snapshots are historical. UI, navigation, and
+> playback decisions remain in force. `CLAUDE.md` is authoritative.
+
 ## 2026-06-24 Movie Detail Hero LCP Preload (reverses 2026-06-13 backdrop deprioritization)
 
 - **Decision**: The `/movie/[slug]` hero backdrop image uses `fetchpriority="high"` + `loading="eager"` and is preloaded via `<link rel="preload" as="image">` (mobile `m` / desktop `d` variants). This reverses the 2026-06-13 `Jun26-v3-img-perf` rule below that set the backdrop to low/lazy and removed its preload.

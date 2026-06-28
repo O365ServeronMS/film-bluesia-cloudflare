@@ -174,16 +174,15 @@ function routeToSafePrefetchUrls(route: string) {
   params.set("page", "1");
 
   const htmlUrl = new URL(`/list/${type}`, window.location.origin);
-  const apiUrl = new URL(`/api/ophim/list/${type}`, window.location.origin);
   for (const key of SAFE_QUERY_KEYS) {
     const value = safeSlug(params.get(key) || "");
-    if (value) {
-      htmlUrl.searchParams.set(key, value);
-      apiUrl.searchParams.set(key, value);
-    }
+    if (value) htmlUrl.searchParams.set(key, value);
   }
+  // Warm the catalog-api base list (no filters — filtered views hit dedicated
+  // /api/country|genre endpoints the island resolves at click time).
+  const apiUrl = new URL("https://img.bluesia.net/api/list");
+  apiUrl.searchParams.set("type", type);
   apiUrl.searchParams.set("page", "1");
-  apiUrl.searchParams.set("limit", "30");
   return [htmlUrl.toString(), apiUrl.toString()].filter((url) => !UNSAFE_RESOURCE_PATTERN.test(url));
 }
 

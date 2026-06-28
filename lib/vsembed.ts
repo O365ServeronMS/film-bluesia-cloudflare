@@ -3,7 +3,10 @@ import type { Episode, EpisodeServer, MovieDetail } from "@/lib/types";
 const DEFAULT_EMBED_BASE_URL = "https://vsembed.ru";
 
 function embedBaseUrl() {
-  return (process.env.VSEMBED_EMBED_BASE_URL || DEFAULT_EMBED_BASE_URL).replace(/\/$/, "");
+  const configured = typeof import.meta !== "undefined" && import.meta.env
+    ? import.meta.env.PUBLIC_VSEMBED_EMBED_BASE_URL
+    : undefined;
+  return String(configured || DEFAULT_EMBED_BASE_URL).replace(/\/$/, "");
 }
 
 function tmdbId(movie: Pick<MovieDetail, "tmdb">) {

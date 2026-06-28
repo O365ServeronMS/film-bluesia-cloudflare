@@ -316,6 +316,9 @@ const isDev = import.meta.env.DEV;
   <body class="font-sans antialiased">
     <main class="mx-auto min-h-screen w-full max-w-[720px] safe-bottom">
       <slot />
+      <footer class="px-4 pb-24 pt-10 text-center text-[11px] leading-5 text-iron-veil/70">
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
+      </footer>
     </main>
     <BottomNav client:load initialPathname={pathname} initialSearch={search} initialSourceFallback={navSourceFallback} />
   </body>

@@ -4,7 +4,7 @@ import BaseLayout from "@/src/layouts/BaseLayout.astro";
 
 export const prerender = true;
 
-const apiBase = process.env.OPHIM_BASE_URL || "https://ophim1.com";
+const catalogBase = "https://img.bluesia.net/api";
 ---
 
 <BaseLayout title="Cài đặt - Bluesia Cinema">
@@ -25,13 +25,14 @@ const apiBase = process.env.OPHIM_BASE_URL || "https://ophim1.com";
 
     <div class="rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
       <div class="mb-3 flex items-center gap-3 text-gold"><Database className="h-6 w-6" /><h2 class="text-lg font-black text-white">Nguồn dữ liệu</h2></div>
-      <p class="break-all text-sm leading-6 text-zinc-300">{apiBase}</p>
-      <p class="mt-2 text-sm leading-6 text-zinc-400">Danh sách, tìm kiếm, chi tiết và tập phim đi qua proxy metadata nội bộ <code>/api/ophim/*</code>. Metadata và ảnh có thể được cache trên Cloudflare trong giới hạn 500 MiB.</p>
+      <p class="break-all text-sm leading-6 text-zinc-300">{catalogBase}/*</p>
+      <p class="mt-2 text-sm leading-6 text-zinc-400">Danh sách, tìm kiếm, chi tiết và tập phim được phục vụ bởi catalog-api tại <code>img.bluesia.net/api/*</code> (metadata TMDB + ảnh ký sẵn, cache trên Valkey/Cloudflare). Front-end triển khai tĩnh, không Worker.</p>
     </div>
 
     <div class="rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
       <div class="mb-3 flex items-center gap-3 text-red-500"><ShieldCheck className="h-6 w-6" /><h2 class="text-lg font-black text-white">Miễn trừ trách nhiệm</h2></div>
-      <p class="text-sm leading-6 text-zinc-400">Ứng dụng này chỉ proxy metadata và tối ưu ảnh. Chúng tôi không lưu trữ, phân phối hay sở hữu bất kỳ tệp video nào trên máy chủ riêng. Nội dung phim đến từ nguồn dữ liệu bên thứ ba.</p>
+      <p class="text-sm leading-6 text-zinc-400">Ứng dụng này chỉ hiển thị metadata và tối ưu ảnh. Chúng tôi không lưu trữ, phân phối hay sở hữu bất kỳ tệp video nào trên máy chủ riêng. Nội dung phim đến từ nguồn dữ liệu bên thứ ba.</p>
+      <p class="mt-3 border-t border-white/10 pt-3 text-xs leading-5 text-zinc-500">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
     </div>
   </section>
 </BaseLayout>
