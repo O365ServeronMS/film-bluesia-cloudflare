@@ -77,6 +77,7 @@ export function normalizeCard(raw: RawItem): MovieCard {
     tmdbRating,
     tmdb: {
       id: raw?.tmdb?.id ?? undefined,
+      type: raw?.tmdb?.type || undefined,
       vote_average: tmdbRating,
       vote_count: num(raw?.tmdb?.vote_count)
     },
@@ -193,6 +194,21 @@ export async function getMovie(slug: string): Promise<MovieDetail> {
   if (vsembedServer) movie.episodes = [...movie.episodes, vsembedServer];
 
   return movie;
+}
+
+/**
+ * "Bạn cũng có thể thích" — TMDB recommendations for a title, resolved and
+ * cached on the VPS `catalog-api` (shared with phim.bluesia.net). TMDB ids are
+ * not unique across movie/tv, so `type` selects the `/movie` or `/tv` endpoint.
+ * Returns pre-signed `MovieCard`s; fire-and-forget on the detail page.
+ */
+export async function getRecommendation(tmdbId: number | string, type = "movie"): Promise<MovieCard[]> {
+  const id = String(tmdbId ?? "").trim();
+  if (!id) return [];
+  const mediaType = type === "tv" ? "tv" : "movie";
+  const payload = await fetchJson<any>(`${CATALOG_BASE}/api/recommendation/${mediaType}/${encodeURIComponent(id)}`);
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return items.map(normalizeCard).filter((movie: MovieCard) => movie.slug);
 }
 
 type Taxonomy = { name: string; slug: string };

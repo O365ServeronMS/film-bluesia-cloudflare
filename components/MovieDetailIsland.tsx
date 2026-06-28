@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Calendar, ChevronDown, Clapperboard, Clock, ListVideo, Star, Users } from "lucide-react";
 import { MovieActions } from "@/components/LocalMovieActions";
+import { MovieCard } from "@/components/MovieCard";
 import { MoviePlayer } from "@/components/MoviePlayer";
-import { getMovie } from "@/lib/catalog";
+import { getMovie, getRecommendation } from "@/lib/catalog";
 import { episodeWatchKey, findEpisodeByWatchKey } from "@/lib/episodes";
 import {
   fallbackReturnToForSource,
@@ -85,6 +86,7 @@ function MovieDetailSkeleton() {
 
 export function MovieDetailIsland() {
   const [movie, setMovie] = useState<MovieDetail | null>(null);
+  const [recommendations, setRecommendations] = useState<MovieCard[]>([]);
   const [error, setError] = useState(false);
   const [synopsisOpen, setSynopsisOpen] = useState(false);
 
@@ -106,6 +108,20 @@ export function MovieDetailIsland() {
       active = false;
     };
   }, []);
+
+  // Fire-and-forget recommendations ("Bạn cũng có thể thích"). Must not block render.
+  useEffect(() => {
+    const tmdbId = movie?.tmdb?.id;
+    if (!tmdbId) return;
+    let active = true;
+    setRecommendations([]);
+    getRecommendation(tmdbId, movie?.tmdb?.type)
+      .then((items) => active && setRecommendations(items))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [movie?.tmdb?.id, movie?.tmdb?.type]);
 
   if (error) {
     return (
@@ -280,6 +296,19 @@ export function MovieDetailIsland() {
           ) : null}
         </div>
       </section>
+
+      {recommendations.length > 0 && (
+        <section className="px-4 pb-8">
+          <h2 className="mb-4 text-heading-sm font-bold leading-heading-sm tracking-tight text-snow">Bạn cũng có thể thích</h2>
+          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+            {recommendations.map((rec) => (
+              <div key={rec.slug} className="w-[132px] shrink-0 snap-start sm:w-[150px]">
+                <MovieCard movie={rec} compact navSourceKey={navSourceKey} returnTo={returnTo} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   );
 }
