@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "film",
+  "name": "blueflare",
   "compatibility_date": "2026-05-30",
   // Static-assets-only deployment — no Worker entry (`main`), no KV, no signing
   // secrets. All catalog data is served by the VPS catalog-api at

@@ -1,6 +1,8 @@
-# Legacy /watch/<slug> → canonical /movie/<slug>
+# Legacy /watch/<slug> -> canonical /movie/<slug>
 /watch/* /movie/:splat 301
 
-# /movie/<slug> is client-rendered: serve the static shell for every movie path
-# (200 rewrite keeps the URL). MovieDetailIsland reads the slug from the URL.
-/movie/* /movie/index.html 200
+# /movie/<slug> is client-rendered: serve the /detail/ shell (200 rewrite keeps
+# the URL). The destination MUST stay outside /movie/ -- Cloudflare rejects a
+# rewrite whose target re-matches its own source pattern (loop). MovieDetailIsland
+# reads the slug from the /movie/<slug> URL.
+/movie/* /detail/ 200

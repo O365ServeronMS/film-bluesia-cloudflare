@@ -70,7 +70,7 @@ src/
     index.astro        # Home shell → HomeIsland
     list/[type].astro  # Category list shell (getStaticPaths: finite types) → ListIsland
     search.astro       # Search shell → SearchSuggest + SearchResults
-    movie/index.astro  # Movie detail SHELL → MovieDetailIsland (served for /movie/* via _redirects)
+    detail.astro       # Movie detail SHELL → MovieDetailIsland (served for /movie/* via _redirects)
     favorites.astro    # localStorage favorites
     history.astro      # localStorage history
     settings.astro     # Info/settings + TMDB attribution
@@ -101,7 +101,7 @@ lib/
   utils.ts        # cn(), rating display, text helpers
 
 public/
-  _redirects      # /watch/* → /movie/:splat (301); /movie/* → /movie/index.html (200 rewrite)
+  _redirects      # /watch/* → /movie/:splat (301); /movie/* → /detail/ (200 rewrite)
   _headers        # static asset headers
 
 docs/             # DECISIONS, FILE_MAP, DESIGN, PAGINATION (cache/snapshot docs superseded)
@@ -115,10 +115,10 @@ docs/             # DECISIONS, FILE_MAP, DESIGN, PAGINATION (cache/snapshot docs
 
 Dynamic routes under static output:
 - **List types** are a finite set → prerendered via `getStaticPaths` in `list/[type].astro`.
-- **`/movie/<slug>`** is unbounded → there is no per-slug page. `public/_redirects` rewrites `/movie/*` to the static `dist/movie/index.html` shell (HTTP 200, URL preserved); `MovieDetailIsland` reads the slug from `window.location` and fetches detail client-side.
+- **`/movie/<slug>`** is unbounded → there is no per-slug page. `public/_redirects` rewrites `/movie/*` to the static `dist/detail/index.html` shell (HTTP 200, URL preserved); `MovieDetailIsland` reads the slug from `window.location` and fetches detail client-side. The shell lives at `/detail/` (outside `/movie/`) because Cloudflare **rejects a 200-rewrite whose destination re-matches its own source** (e.g. `/movie/* → /movie/index.html` loops once html-handling strips `/index`).
 - **`/watch/<slug>`** → 301 to `/movie/:splat` via `_redirects` (legacy).
 
-Cloudflare Workers Static Assets `_redirects` supports `200` rewrites + `:splat` (verified).
+Cloudflare Workers Static Assets `_redirects` supports `200` rewrites + `:splat`; keep proxy destinations out of their own source namespace.
 
 ---
 
